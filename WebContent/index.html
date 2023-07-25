@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="common.css">
+    <script src="util.js"></script>
+    <script src="index.js"></script>
+    <title>RAIRE Webservice Demo</title>
+</head>
+<body>
+<h2>RAIRE Webservice Demo</h2>
+<p>This is a demo of RAIRE running as a webservice.</p>
+
+<h3>Input</h3>
+<p>Input is a JSON file. The default value is for the demo shown in the
+    "A Guide to RAIRE" document.</p>
+
+<textarea rows="18" cols="120" id="Input">
+{
+  "metadata": {
+    "candidates": ["Alice", "Bob", "Chuan","Diego" ],
+    "note" : "Anything can go in the metadata section. Candidates names are used below if present. "
+  },
+  "num_candidates": 4,
+  "votes": [
+    { "n": 5000, "prefs": [ 2, 1, 0 ] },
+    { "n": 1000, "prefs": [ 1, 2, 3 ] },
+    { "n": 1500, "prefs": [ 3, 0 ] },
+    { "n": 4000, "prefs": [ 0, 3 ] },
+    { "n": 2000, "prefs": [ 3 ]  }
+  ],
+  "winner": 2,
+  "audit": { "type": "Margin", "total_auditable_ballots": 13500  }
+}
+</textarea><br/>
+
+<button onclick="execute_raire()">Execute</button>
+
+<h3>Output</h3>
+<p>To observe the raw JSON, please use your browser's network traffic inspector.
+This shows a human readable version of it.</p>
+
+<div id="Output"> </div>
+
+</body>
+</html>

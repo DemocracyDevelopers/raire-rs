@@ -1,0 +1,50 @@
+
+div.error, p.error {
+    color : red;
+}
+
+div.computing {
+    font-weight: bold;
+}
+
+span.difficulty_start {
+    display: inline-block;
+    width : 10em;
+    text-align: right;
+    padding-right: 1em;
+}
+
+/* Bulletin board css */
+
+span.PartOfChain {
+    background: #fff0f0;
+    border: 1px solid #ff9999;
+    border-radius: 2px;
+}
+
+rect.TreeView {
+    rx : 3px;
+    ry : 3px;
+    stroke : black;
+    fill : lightblue;
+    cursor: pointer;
+}
+
+line.TreeView {
+    stroke : black;
+    width : 2px;
+}
+
+text.TreeViewHash {
+    font-size:12px;
+    text-anchor : middle;
+    dominant-baseline : middle;
+}
+
+text.TreeViewLeaf {
+    font-size:12px;
+    text-anchor : middle;
+    dominant-baseline : middle;
+    font-weight: bold;
+}
+

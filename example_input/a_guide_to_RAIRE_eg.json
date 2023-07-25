@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "candidates": ["Alice", "Bob", "Chuan","Diego" ],
+    "note" : "Anything can go in the metadata section. Candidates names are used below if present. "
+  },
+  "num_candidates": 4,
+  "votes": [
+    { "n": 5000, "prefs": [ 2, 1, 0 ] },
+    { "n": 1000, "prefs": [ 1, 2, 3 ] },
+    { "n": 1500, "prefs": [ 3, 0 ] },
+    { "n": 4000, "prefs": [ 0, 3 ] },
+    { "n": 2000, "prefs": [ 3 ]  }
+  ],
+  "winner": 2,
+  "audit": { "type": "Margin", "total_auditable_ballots": 13500  }
+}
