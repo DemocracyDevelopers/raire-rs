@@ -227,35 +227,3 @@ impl IRVElectionWork {
         }
     }
 }
-
-/// A vote, resolved into BTL, that is somewhere through being distributed.
-/// Ignore preferences with index less than upto.
-/// May consist of multiple independent identical votes.
-#[derive(Copy, Clone,Debug)]
-pub struct PartiallyDistributedVote<'a> {
-    pub(crate) upto : usize,
-    /// The number of voters
-    pub n : BallotPaperCount,
-    /// Preferred candidates, with index 0 being the most favoured candidate.
-    pub prefs : &'a[CandidateIndex],
-}
-
-impl<'a>  PartiallyDistributedVote<'a> {
-    pub fn new(n:usize,prefs : &'a[CandidateIndex]) -> Self {
-        PartiallyDistributedVote{
-            upto: 0,
-            n: BallotPaperCount(n),
-            prefs,
-        }
-    }
-    pub fn exhausted(&self) -> bool { self.upto==self.prefs.len() }
-    pub fn candidate(&self) -> CandidateIndex { self.prefs[self.upto] }
-    pub fn next(&self,continuing:&HashSet<CandidateIndex>) -> Option<Self> {
-        for i in self.upto .. self.prefs.len() {
-            if continuing.contains(&self.prefs[i]) {
-                return Some(PartiallyDistributedVote{upto:i,n:self.n,prefs:self.prefs})
-            }
-        }
-        None
-    }
-}
