@@ -78,6 +78,23 @@ cargo test
 
 Some of these currently fail. See the important note at the top of this file.
 
+# Running original RAIRE examples and interpreting the answers.
+
+There is a program produced, `parse_raire_csv` that reads the original files and
+produces a RAIRE JSON format. Run `./target/release/parse_raire_csv --help` for
+all options.
+
+There is a program produced, `describe` that takes the JSON output of `raire`
+and prints it in a human readable form.
+
+Example:
+
+```bash
+./target/release/parse_raire_csv  ../audit-irv-cp/USIRV/SFDA_2019_Nov8Partial.raire
+./target/release/raire SFDA_2019_Nov8Partial.json 
+./target/release/describe SFDA_2019_Nov8Partial_out.json
+```
+
 ## Copyright
 
 This program is Copyright 2023 Andrew Conway.
