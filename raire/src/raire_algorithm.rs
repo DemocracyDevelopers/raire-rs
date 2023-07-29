@@ -13,7 +13,7 @@
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use crate::assertions::{all_elimination_orders, Assertion, AssertionAndDifficulty, CandidatePermutation, NotEliminatedNext, NotEliminatedBefore};
+use crate::assertions::{all_elimination_orders, Assertion, AssertionAndDifficulty, NotEliminatedNext, NotEliminatedBefore, EliminationOrder, EliminationOrderSuffix, EffectOfAssertionOnEliminationOrderSuffix};
 use crate::audit_type::{AssertionDifficulty, AuditType};
 use crate::irv::{CandidateIndex, Votes};
 use serde::Deserialize;
@@ -27,20 +27,34 @@ pub struct RaireResult {
 }
 
 impl RaireResult {
-    pub fn possible_elimination_orders_allowed_by_assertions(&self,num_candidates:u32) -> Vec<CandidatePermutation> {
+    pub fn possible_elimination_orders_allowed_by_assertions(&self,num_candidates:u32) -> Vec<EliminationOrder> {
         let mut elimination_orders = all_elimination_orders(num_candidates);
         for a in &self.assertions {
-            elimination_orders.retain(|order|a.assertion.ok(order));
+            elimination_orders.retain(|order|a.assertion.ok_elimination_order_suffix(order)==EffectOfAssertionOnEliminationOrderSuffix::Ok);
         }
         elimination_orders
     }
+
+    pub fn possible_elimination_order_suffixes_allowed_by_assertions(&self,num_candidates:u32) -> Vec<EliminationOrder> {
+        let mut elimination_orders : Vec<EliminationOrderSuffix> = vec![vec![]]; // start off with the minimal set.
+        for a in &self.assertions {
+            let mut next = vec![];
+            for v in elimination_orders.drain(..) {
+                next.append(&mut a.assertion.allowed_suffixes(v,num_candidates));
+            }
+            elimination_orders = next;
+        }
+        elimination_orders
+    }
+
+
 }
 
 #[derive(Debug)]
 /// An entry in the priority queue.
 struct SequenceAndEffort {
     /// a permutation that needs to be ruled out.
-    pi : Vec<CandidateIndex>,
+    pi : EliminationOrderSuffix,
     best_assertion_for_ancestor : AssertionAndDifficulty,
     /// the best ancestor for pi will be a subset of pi, in particular the last best_ancestor_length elements of pi.
     best_ancestor_length : usize,

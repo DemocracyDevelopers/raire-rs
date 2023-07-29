@@ -62,19 +62,34 @@ impl NotEliminatedBefore {
         } else {None}
     }
 
-    /// see if the assertion doesn't rule out the given elimination order.
-    pub fn ok(&self,elimination_order:&[CandidateIndex]) -> bool {
+    /// see if the assertion doesn't rule out the given elimination order suffix.
+    pub fn ok_elimination_order_suffix(&self,elimination_order_suffix:&[CandidateIndex]) -> EffectOfAssertionOnEliminationOrderSuffix {
         // the winner cannot be excluded before the loser.
-        check_winner_eliminated_after_loser(elimination_order,self.winner,self.loser)
+        check_winner_eliminated_after_loser(elimination_order_suffix,self.winner,self.loser)
     }
 }
 
-fn check_winner_eliminated_after_loser(elimination_order:&[CandidateIndex],winner:CandidateIndex,loser:CandidateIndex) -> bool {
-    if let Some(winner_position) = elimination_order.iter().position(|v|*v==winner) {
-        if let Some(loser_position) = elimination_order.iter().position(|v|*v==loser) {
-            winner_position>loser_position // compatible with this if the winner was excluded after the loser.
-        } else { true } // should never happen if inputs sane
-    } else { true } // should never happen if inputs sane
+/// An elimination order will be either compatible with a suffix or not.
+/// A suffix of an elimination order may be compatible or not or it may just not have enough information to be sure.
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
+pub enum EffectOfAssertionOnEliminationOrderSuffix {
+    /// The suffix is ruled out by the assertion, regardless of the rest of the assertion.
+    Contradiction,
+    /// The suffix is ok as far as the assertion is concerned, no more information needed.
+    /// This could mean that the suffix agrees with the assertion, or the assertion only applies to different suffixes.
+    /// Regardless, whatever the rest of the elimiation order, the assertion will be fine with this.
+    Ok,
+    /// Some elimination orders ending with this suffix are OK, others are contradicted.
+    NeedsMoreDetail,
+}
+
+/// works with either a full or partial elimination order
+fn check_winner_eliminated_after_loser(elimination_order:&[CandidateIndex],winner:CandidateIndex,loser:CandidateIndex) -> EffectOfAssertionOnEliminationOrderSuffix {
+    for c in elimination_order.iter().rev() {
+        if *c == winner { return EffectOfAssertionOnEliminationOrderSuffix::Ok; } // winner is after loser
+        else if *c==loser { return EffectOfAssertionOnEliminationOrderSuffix::Contradiction; } // loser is after winner
+    }
+    EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail // no information on relative order
 }
 
 
@@ -110,7 +125,7 @@ pub struct NotEliminatedNext {
     pub winner : CandidateIndex,
     pub loser : CandidateIndex,
     /// sorted (ascending) list of continuing candidates.
-    pub continuing : Vec<CandidateIndex>,
+    pub continuing : SortedCandidateSubset,
 }
 
 impl NotEliminatedNext {
@@ -148,15 +163,15 @@ impl NotEliminatedNext {
         self.continuing.binary_search_by_key(&c.0,|e|e.0).is_ok()
     }
 
-    /// see if the assertion doesn't rule out the given elimination order.
-    pub fn ok(&self,elimination_order:&[CandidateIndex]) -> bool {
-        // the order of the people who are left when down to the same length as self.continuing().
-        let suffix = &elimination_order[(elimination_order.len()-self.continuing.len())..];
+    /// see if the assertion doesn't rule out the given elimination order suffix.
+    pub fn ok_elimination_order_suffix(&self,elimination_order_suffix:&[CandidateIndex]) -> EffectOfAssertionOnEliminationOrderSuffix {
+        // the order of the people who are left when down to the same length as self.continuing(). Or the whole thing if sub-prefix
+        let suffix = if elimination_order_suffix.len()>self.continuing.len() {&elimination_order_suffix[(elimination_order_suffix.len()-self.continuing.len())..]} else {elimination_order_suffix};
         // check to see the last candidates in the elimination order match the continuing candidates.
         for c in suffix {
-            if !self.is_continuing(*c) { return true } // the elimination order is not affected by this rule as the continuing candidates are wrong.
+            if !self.is_continuing(*c) { return EffectOfAssertionOnEliminationOrderSuffix::Ok } // the elimination order is not affected by this rule as the continuing candidates are wrong.
         }
-        check_winner_eliminated_after_loser(suffix,self.winner,self.loser) // could pass the whole elimination order, but suffix is fine and faster.
+        check_winner_eliminated_after_loser(suffix,self.winner,self.loser) // could pass the whole elimination order, but suffix is fine and faster as winner and loser must be in continuing.
     }
 }
 
@@ -175,17 +190,54 @@ pub struct AssertionAndDifficulty {
 
 
 impl Assertion {
-    pub fn ok(&self,elimination_order:&[CandidateIndex]) -> bool {
+
+    /// Return true if the given elimination order suffix is allowed by the assertion
+    pub fn ok_elimination_order_suffix(&self, elimination_order_suffix:&[CandidateIndex]) -> EffectOfAssertionOnEliminationOrderSuffix {
         match self {
-            Assertion::NEB(wo) => wo.ok(elimination_order),
-            Assertion::NEN(irv) => irv.ok(elimination_order),
+            Assertion::NEB(wo) => wo.ok_elimination_order_suffix(elimination_order_suffix),
+            Assertion::NEN(irv) => irv.ok_elimination_order_suffix(elimination_order_suffix),
         }
     }
+
+    /// given an elimination order suffix,
+    ///  * let it through if it is allowed,
+    ///  * block if it is contradicted,
+    ///  * expand if it is not enough information.
+    pub fn allowed_suffixes(&self,elimination_order_suffix:EliminationOrderSuffix,num_candidates:u32) -> Vec<EliminationOrderSuffix> {
+        match self.ok_elimination_order_suffix(&elimination_order_suffix) {
+            EffectOfAssertionOnEliminationOrderSuffix::Contradiction => vec![],
+            EffectOfAssertionOnEliminationOrderSuffix::Ok => vec![elimination_order_suffix],
+            EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail => { // needs to expand
+                let mut res = vec![];
+                for c in 0..num_candidates {
+                    let c = CandidateIndex(c);
+                    if !elimination_order_suffix.contains(&c) {
+                        let mut v = vec![c];
+                        v.extend_from_slice(&elimination_order_suffix);
+                        res.append(&mut self.allowed_suffixes(v,num_candidates));
+                    }
+                }
+                res
+            }
+        }
+    }
+
 }
 
 // Code to check what a set of assertions implies.
 
+/// A permutation of all possible candidates
 pub type CandidatePermutation = Vec<CandidateIndex>;
+/// A permutation of all possible candidates, listed from first eliminated to winner
+pub type EliminationOrder = Vec<CandidateIndex>;
+/// A permutation of all possible candidates, listed from winner down to first eliminated
+pub type ReverseEliminationOrder = Vec<CandidateIndex>;
+/// A prefix to a ReverseEliminationOrder. That is, the first entry is the winner.
+pub type ReverseEliminationOrderPrefix = Vec<CandidateIndex>;
+/// A suffix to an EliminationOrder. That is, the first entry is the winner.
+pub type EliminationOrderSuffix = Vec<CandidateIndex>;
+/// A set of candidates, listed in ascending order of CandidateIndex.
+pub type SortedCandidateSubset = Vec<CandidateIndex>;
 
 /// Get all num_candidates factorial possible orderings
 pub fn all_elimination_orders(num_candidates:u32) -> Vec<CandidatePermutation> {

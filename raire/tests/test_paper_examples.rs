@@ -315,6 +315,13 @@ fn test_example12_raire_bravo() {
         let winning_candidate = e.last().cloned();
         assert_eq!(Some(CandidateIndex(0)),winning_candidate);
     }
+    let elimination_suffixes = res.possible_elimination_order_suffixes_allowed_by_assertions(votes.num_candidates());
+    println!("Allowed elimination order suffixes : {:?}", elimination_suffixes);
+    assert_ne!(0, elimination_suffixes.len());
+    for e in elimination_suffixes {
+        let winning_candidate = e.last().cloned();
+        assert_eq!(Some(CandidateIndex(0)),winning_candidate);
+    }
 }
 
 /// Test that RAIRE produces reasonable answers for the MACRO audit type.
@@ -329,6 +336,13 @@ fn test_example12_raire_macro() {
     println!("Allowed elimination orders : {:?}", elimination_orders);
     assert_ne!(0, elimination_orders.len());
     for e in elimination_orders {
+        let winning_candidate = e.last().cloned();
+        assert_eq!(Some(CandidateIndex(0)),winning_candidate);
+    }
+    let elimination_suffixes = res.possible_elimination_order_suffixes_allowed_by_assertions(votes.num_candidates());
+    println!("Allowed elimination order suffixes : {:?}", elimination_suffixes);
+    assert_ne!(0, elimination_suffixes.len());
+    for e in elimination_suffixes {
         let winning_candidate = e.last().cloned();
         assert_eq!(Some(CandidateIndex(0)),winning_candidate);
     }
