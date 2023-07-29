@@ -3,12 +3,16 @@
 function execute_raire() {
     let input = document.getElementById("Input").value;
     let output_div = document.getElementById("Output");
+    let explanation_div = document.getElementById("Explanation");
     removeAllChildElements(output_div);
-    try { JSON.parse(input) } catch (e) {
+    removeAllChildElements(explanation_div);
+    let parsed_input = null;
+    try { parsed_input=JSON.parse(input) } catch (e) {
         add(output_div,"p","error").innerText="Error : input is not JSON";
         return;
     }
     add(output_div,"p","computing").innerText="Computing...";
+    add(explanation_div,"p","computing").innerText="Computing...";
     function failure(message) {
         removeAllChildElements(output_div);
         add(output_div,"p","error").innerText="Error : "+message;
@@ -41,6 +45,12 @@ function execute_raire() {
                     adesc.innerText="Unknown assertion type"
                 }
             }
+            let candidate_names = data.metadata && data.metadata.candidates;
+            if (!(Array.isArray(candidate_names) && candidate_names.length===parsed_input.num_candidates)) {
+                candidate_names = [];
+                for (let i=0;i<parsed_input.num_candidates;i++) { candidate_names.push(candidate_name(i)); }
+            }
+            explain(explanation_div,data.solution.Ok.assertions.map(a=>a.assertion),candidate_names,document.getElementById("ExpandAtStart").checked);
         } else if (data.solution.Err) {
             let err = data.solution.Err;
             if (err==="Timeout") {

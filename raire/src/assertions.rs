@@ -73,7 +73,7 @@ impl NotEliminatedBefore {
 /// A suffix of an elimination order may be compatible or not or it may just not have enough information to be sure.
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub enum EffectOfAssertionOnEliminationOrderSuffix {
-    /// The suffix is ruled out by the assertion, regardless of the rest of the assertion.
+    /// The suffix is ruled out by the assertion, regardless of the rest of the elimination order.
     Contradiction,
     /// The suffix is ok as far as the assertion is concerned, no more information needed.
     /// This could mean that the suffix agrees with the assertion, or the assertion only applies to different suffixes.
@@ -171,7 +171,11 @@ impl NotEliminatedNext {
         for c in suffix {
             if !self.is_continuing(*c) { return EffectOfAssertionOnEliminationOrderSuffix::Ok } // the elimination order is not affected by this rule as the continuing candidates are wrong.
         }
-        check_winner_eliminated_after_loser(suffix,self.winner,self.loser) // could pass the whole elimination order, but suffix is fine and faster as winner and loser must be in continuing.
+        match check_winner_eliminated_after_loser(suffix,self.winner,self.loser) { // could pass the whole elimination order, but suffix is fine and faster as winner and loser must be in continuing.
+            EffectOfAssertionOnEliminationOrderSuffix::Contradiction => if elimination_order_suffix.len()>=self.continuing.len() {EffectOfAssertionOnEliminationOrderSuffix::Contradiction} else {EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail}, // loser seen first.
+            EffectOfAssertionOnEliminationOrderSuffix::Ok => EffectOfAssertionOnEliminationOrderSuffix::Ok, // winner seen first. Either irrelevant or loser.
+            EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail => EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail, // neither winner nor loser seen
+        }
     }
 }
 
