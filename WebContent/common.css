@@ -26,37 +26,44 @@ span.eliminated {
     color: grey;
 }
 
-/* Bulletin board css */
-
-span.PartOfChain {
-    background: #fff0f0;
-    border: 1px solid #ff9999;
-    border-radius: 2px;
+rect.winner, circle.winner {
+    stroke: none;
+    fill: green;
 }
 
-rect.TreeView {
-    rx : 3px;
-    ry : 3px;
-    stroke : black;
-    fill : lightblue;
-    cursor: pointer;
+rect.loser, circle.loser {
+    stroke: none;
+    fill: red;
 }
 
-line.TreeView {
-    stroke : black;
-    width : 2px;
+rect.eliminated, circle.eliminated {
+    stroke: none;
+    fill: grey;
+}
+rect.irrelevant, circle.irrelevant, rect.continuing, circle.continuing, rect.no_assertion, circle.no_assertion {
+    stroke: none;
+    fill: orange;
 }
 
-text.TreeViewHash {
-    font-size:12px;
-    text-anchor : middle;
+line.valid {
+    stroke: orange;
+    stroke-width: 2;
+}
+line.invalid {
+    stroke: lightgray;
+    stroke-width: 2;
+}
+
+text {
+    font-size: 12px;
+    font-family: sans-serif;
+}
+
+text.left {
+    text-anchor : end;
     dominant-baseline : middle;
 }
 
-text.TreeViewLeaf {
-    font-size:12px;
+text.above {
     text-anchor : middle;
-    dominant-baseline : middle;
-    font-weight: bold;
 }
-

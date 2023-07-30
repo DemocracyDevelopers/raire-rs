@@ -50,7 +50,7 @@ function execute_raire() {
                 candidate_names = [];
                 for (let i=0;i<parsed_input.num_candidates;i++) { candidate_names.push(candidate_name(i)); }
             }
-            explain(explanation_div,data.solution.Ok.assertions.map(a=>a.assertion),candidate_names,document.getElementById("ExpandAtStart").checked);
+            explain(explanation_div,data.solution.Ok.assertions.map(a=>a.assertion),candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked);
         } else if (data.solution.Err) {
             let err = data.solution.Err;
             if (err==="Timeout") {
