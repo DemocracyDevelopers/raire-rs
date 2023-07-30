@@ -171,10 +171,11 @@ impl NotEliminatedNext {
         for c in suffix {
             if !self.is_continuing(*c) { return EffectOfAssertionOnEliminationOrderSuffix::Ok } // the elimination order is not affected by this rule as the continuing candidates are wrong.
         }
-        match check_winner_eliminated_after_loser(suffix,self.winner,self.loser) { // could pass the whole elimination order, but suffix is fine and faster as winner and loser must be in continuing.
-            EffectOfAssertionOnEliminationOrderSuffix::Contradiction => if elimination_order_suffix.len()>=self.continuing.len() {EffectOfAssertionOnEliminationOrderSuffix::Contradiction} else {EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail}, // loser seen first.
-            EffectOfAssertionOnEliminationOrderSuffix::Ok => EffectOfAssertionOnEliminationOrderSuffix::Ok, // winner seen first. Either irrelevant or loser.
-            EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail => EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail, // neither winner nor loser seen
+        if suffix.len()==self.continuing.len() { // the whole elimination order is all present. The winner cannot be the first eliminated, as self.winner has more votes than self.loser at this point.
+            if suffix[0]==self.winner { EffectOfAssertionOnEliminationOrderSuffix::Contradiction} else { EffectOfAssertionOnEliminationOrderSuffix::Ok }
+        } else {
+            if suffix.contains(&self.winner) { EffectOfAssertionOnEliminationOrderSuffix::Ok } // winner wasn't the first eliminated.
+            else { EffectOfAssertionOnEliminationOrderSuffix::NeedsMoreDetail }
         }
     }
 }

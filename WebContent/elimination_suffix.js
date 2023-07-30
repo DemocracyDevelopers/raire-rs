@@ -25,19 +25,23 @@ function assertion_ok_elimination_order_suffix(assertion,elimination_order_suffi
             const candidate = elimination_order_suffix[index];
             if (!assertion.continuing.includes(candidate)) { return EffectOfAssertionOnEliminationOrderSuffix.Ok } // the assertion does not say anything about this elimination order or any continuation of it.
         }
-    }
-    for (let index=elimination_order_suffix.length-1;index>=0;index--) { // look at candidates in reverse order of elimination order, that is winner first.
-        const candidate = elimination_order_suffix[index];
-        if (candidate===assertion.winner) { return EffectOfAssertionOnEliminationOrderSuffix.Ok } // winner comes before loser, no problems. If a NEN with incomplete elimination order, either it ie irrelevant => OK or it is good => OK.
-        else if (candidate===assertion.loser) { // loser comes before winner, no way unless...
-            if (assertion.type==="NEN" && elimination_order_suffix.length<assertion.continuing.length) { // we don't have all the continuing candidates, so some suffixes will turn out to be irrelevant.
-                return EffectOfAssertionOnEliminationOrderSuffix.NeedsMoreDetail;
+        if (elimination_order_suffix.length>=assertion.continuing.length) { // the whole elimination order is all present. The winner cannot be the first eliminated, as self.winner has more votes than self.loser at this point.
+            if (elimination_order_suffix[elimination_order_suffix.length-assertion.continuing.length]===assertion.winner) { return EffectOfAssertionOnEliminationOrderSuffix.Contradiction; } else { return EffectOfAssertionOnEliminationOrderSuffix.Ok; }
+        }  else {
+            if (elimination_order_suffix.includes(assertion.winner)) { // winner wasn't the first eliminated.
+                return EffectOfAssertionOnEliminationOrderSuffix.Ok;
             } else {
-                return EffectOfAssertionOnEliminationOrderSuffix.Contradiction; // loser comes before winner.
+                return EffectOfAssertionOnEliminationOrderSuffix.NeedsMoreDetail;
             }
         }
+    } else { // NEB
+        for (let index=elimination_order_suffix.length-1;index>=0;index--) { // look at candidates in reverse order of elimination order, that is winner first.
+            const candidate = elimination_order_suffix[index];
+            if (candidate===assertion.winner) { return EffectOfAssertionOnEliminationOrderSuffix.Ok } // winner goes better than loser, no problems. If a NEN with incomplete elimination order, either it ie irrelevant => OK or it is good => OK.
+            else if (candidate===assertion.loser) { return EffectOfAssertionOnEliminationOrderSuffix.Contradiction; } // loser goes better than winner, no way unless...
+        }
+        return EffectOfAssertionOnEliminationOrderSuffix.NeedsMoreDetail; // haven't seen the winner or loser yet.
     }
-    return EffectOfAssertionOnEliminationOrderSuffix.NeedsMoreDetail; // haven't seen the winner or loser yet.
 }
 
 /**
@@ -131,7 +135,7 @@ function assertion_description(assertion,candidate_names) {
     if (assertion.type==="NEB") {
         return basic;
     } else {
-        return basic+" when only "+assertion.continuing.map(i=>candidate_names[i]).join(",")+" are continuing";
+        return basic+" if only {"+assertion.continuing.map(i=>candidate_names[i]).join(",")+"} remain";
     }
 }
 
