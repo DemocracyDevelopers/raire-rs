@@ -24,6 +24,7 @@ use crate::RaireError;
 pub struct RaireResult {
     pub assertions : Vec<AssertionAndDifficulty>,
     pub difficulty: AssertionDifficulty,
+    pub winner : CandidateIndex,
 }
 
 impl RaireResult {
@@ -180,5 +181,5 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A) -> Result
         //println!("frontier now includes {} elements",frontier.len())
     }
     // TODO - remove redundant assertions - see "Refining our Assertion Set"
-    Ok(RaireResult{assertions, difficulty: bound })
+    Ok(RaireResult{assertions, difficulty: bound , winner })
 }
