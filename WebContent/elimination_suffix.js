@@ -262,10 +262,11 @@ function draw_trees_as_text(div,elimination_orders,candidate_names,assertion) {
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
  **/
 function draw_svg_tree(div,tree,candidate_names,assertion) {
-    console.log(tree);
+    //console.log(tree);
     tree.computeWidths(0);
     let nodes_wide = tree.width;
     let nodes_high = tree.height;
+    if (nodes_high<candidate_names.length) nodes_high+=1; // there will be implicit triangles below. Account for them.
     const pixels_per_node_x = 80;
     const pixels_per_node_y = 50;
     const node_radius = 5;
@@ -295,18 +296,45 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
             name.setAttribute("x",cx-2*node_radius);
             name.setAttribute("y",cy);
         }
-        for (const c of node.orderedChildren) {
-            let position = drawTree(c,nodes_above_me+1);
-            let line = addSVG(lines,"line",c.valid?"valid":"invalid");
+        function drawLineTo(x,y,valid) { // draw a line from this element to a location
+            let line = addSVG(lines,"line",valid?"valid":"invalid");
             line.setAttribute("x1",cx);
             line.setAttribute("y1",cy);
-            line.setAttribute("x2",position.cx);
-            line.setAttribute("y2",position.cy);
+            line.setAttribute("x2",x);
+            line.setAttribute("y2",y);
+        }
+        for (const c of node.orderedChildren) {
+            let position = drawTree(c,nodes_above_me+1);
+            drawLineTo(position.cx,position.cy,c.valid)
+        }
+        if (nodes_above_me!==candidate_names.length-1 && node.orderedChildren.length===0) { // draw a triangle below.
+            let top_y = cy+0.5*pixels_per_node_y;
+            let triangle_height = 30;
+            let triangle_half_width = 15;
+            let bottom_y = top_y+triangle_height;
+            drawLineTo(cx,top_y,node.valid);
+            addSVG(nodes,"polygon",node.valid?"valid":"invalid").setAttribute("points",""+cx+","+top_y+" "+(cx-triangle_half_width)+","+bottom_y+" "+(cx+triangle_half_width)+","+bottom_y);
+            const skipped_nodes = factorial(candidate_names.length-1-nodes_above_me);
+            let count = addSVG(names,"text",node.valid?"valid":"invalid");
+            count.textContent=""+skipped_nodes;
+            count.setAttribute("x",cx);
+            count.setAttribute("y",bottom_y-5);
         }
         return {cx:cx,cy:cy};
     }
     drawTree(tree,0);
 }
+
+/**
+ * Compute n!
+ * @param {number} n
+ * @returns {number} n factorial
+ */
+function factorial(n) {
+    if (n===0) return 1;
+    else return n*factorial(n-1);
+}
+
 
 /**
  * Get the class description of the candidate
@@ -349,8 +377,8 @@ function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,af
  */
 function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_not_trees) {
     const num_candidates=candidate_names.length;
-    console.log(candidate_names);
-    console.log(assertions);
+    //console.log(candidate_names);
+    //console.log(assertions);
     removeAllChildElements(div);
     let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
     let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);

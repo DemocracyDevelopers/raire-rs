@@ -45,15 +45,25 @@ rect.irrelevant, circle.irrelevant, rect.continuing, circle.continuing, rect.no_
     fill: orange;
 }
 
-line.valid {
+line.valid, polygon.valid {
     stroke: orange;
     stroke-width: 2;
+    fill: none;
 }
-line.invalid {
+line.invalid, polygon.invalid {
     stroke: lightgray;
     stroke-width: 2;
+    fill: none;
 }
 
+text.invalid {
+    color: lightgray;
+}
+
+text.valid, text.invalid {
+    dominant-baseline : auto;
+    text-anchor : middle;
+}
 text {
     font-size: 12px;
     font-family: sans-serif;
@@ -66,4 +76,8 @@ text.left {
 
 text.above {
     text-anchor : middle;
+}
+
+svg {
+    vertical-align: top;
 }
