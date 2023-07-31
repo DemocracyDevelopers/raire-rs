@@ -26,6 +26,7 @@ pub struct RaireResult {
     pub assertions : Vec<AssertionAndDifficulty>,
     pub difficulty: AssertionDifficulty,
     pub winner : CandidateIndex,
+    pub num_candidates : u32,
 }
 
 impl RaireResult {
@@ -182,5 +183,5 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A) -> Result
         //println!("frontier now includes {} elements",frontier.len())
     }
     order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
-    Ok(RaireResult{assertions, difficulty: bound , winner })
+    Ok(RaireResult{assertions, difficulty: bound , winner,num_candidates:votes.num_candidates() })
 }

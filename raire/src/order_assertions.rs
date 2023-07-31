@@ -31,8 +31,8 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     let mut elimination_orders : Vec<EliminationOrderSuffix> = (0..num_candidates).into_iter().filter(|c|*c!=winner.0).map(|c|vec![CandidateIndex(c)]).collect();
     let mut upto = 0; // assertions[0..upto] are dealt with.
     while upto<assertions.len() {
-        println!("Current elimination orders {upto}:");
-        for e in &elimination_orders { println!("{:?}",e); }
+        //println!("Current elimination orders {upto}:");
+        //for e in &elimination_orders { println!("{:?}",e); }
         // see if the remaining assertions have any point
         if elimination_orders.len()==0 { // we are done! remaining things are useless.
             assertions.truncate(upto);

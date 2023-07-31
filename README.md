@@ -46,6 +46,8 @@ POST request providing the input JSON and returning the output JSON.
 
 There is a human readable demo also provided at [http://localhost:3000/](http://localhost:3000/)
 demonstrating the use of the API and the interpretation of the result.
+There is also a human readable interpretation of the output of a variety
+of formats of RAIRE outputs at [http://localhost:3000/explain_assertions.html](http://localhost:3000/explain_assertions.html).
 
 
 ```bash

@@ -379,7 +379,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     const num_candidates=candidate_names.length;
     //console.log(candidate_names);
     //console.log(assertions);
-    removeAllChildElements(div);
+    // removeAllChildElements(div);
     let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
     let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);
     add(div,"h5","explanation_text").innerText="We start with all possible elimination orders";
@@ -394,4 +394,63 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
         add(div,"h5","explanation_text").innerText="After applying assertion";
         draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
     }
+}
+
+
+function describe_raire_result(output_div,explanation_div,data) {
+    function candidate_name(id) {
+        if (data.metadata && Array.isArray(data.metadata.candidates)) {
+            let name = data.metadata.candidates[id];
+            if (name) { return name; }
+        }
+        return "Candidate "+id;
+    }
+    function candidate_name_list(ids) {
+        return ids.map(candidate_name).join(",")
+    }
+    if (data.solution && data.solution.Ok) {
+        let heading_name = "Assertions";
+        if (data.metadata.hasOwnProperty("contest")) heading_name+=" for "+data.metadata.contest;
+        if (data.solution.Ok.hasOwnProperty("difficulty")) heading_name+=" - difficulty = "+data.solution.Ok.difficulty;
+        add(output_div,"h3","Assertions").innerText=heading_name;
+        for (const av of data.solution.Ok.assertions) {
+            let adiv = add(output_div,"div");
+            if (av.hasOwnProperty("difficulty")) add(adiv,"span","difficulty_start").innerText=""+av.difficulty; // Michelle's format doesn't have it for individual assertions
+            const a = av.assertion;
+            const adesc = add(adiv,"span");
+            if (a["type"] === "NEN") {
+                adesc.innerText="NEN: "+candidate_name(a.winner)+" > "+candidate_name(a.loser)+" if only {"+candidate_name_list(a.continuing)+"} remain";
+            } else if (a["type"] === "NEB") {
+                adesc.innerText=candidate_name(a.winner)+" NEB "+candidate_name(a.loser);
+            } else {
+                adesc.innerText="Unknown assertion type"
+            }
+        }
+        let candidate_names = data.metadata && data.metadata.candidates;
+        if (!(Array.isArray(candidate_names) && candidate_names.length===data.solution.Ok.num_candidates)) {
+            candidate_names = [];
+            for (let i=0;i<parsed_input.num_candidates;i++) { candidate_names.push("Candidate "+i); }
+        }
+        if (data.metadata.hasOwnProperty("contest")) add(explanation_div,"h4").innerText="Contest : "+data.metadata.contest;
+        explain(explanation_div,data.solution.Ok.assertions.map(a=>a.assertion),candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked);
+    } else if (data.solution && data.solution.Err) {
+        let err = data.solution.Err;
+        if (err==="Timeout") {
+            add(output_div,"p","error").innerText="Timeout - the problem seemed to take too long";
+        } else if (Array.isArray(err.CouldNotRuleOut)) {
+            add(output_div,"p","error").innerText="Impossible to audit. Could not rule out the following elimination order:";
+            for (let i=0;i<err.CouldNotRuleOut.length;i++) {
+                add(output_div,"p","candidate_name").innerText=candidate_name(err.CouldNotRuleOut[i])+(i===0?" (First elimimated)":"")+(i===err.CouldNotRuleOut.length-1?" (Winner)":"");
+            }
+        } else if (Array.isArray(err.TiedWinners)) {
+            add(output_div,"p","error").innerText="Audit not possible as "+candidate_name_list(err.TiedWinners)+" are tied IRV winners and a one vote difference would change the outcome.";
+        } else if (Array.isArray(err.WrongWinner)) {
+            add(output_div,"p","error").innerText="The votes are not consistent with the provided winner. Perhaps "+candidate_name_list(err.WrongWinner)+"?";
+        } else {
+            add(output_div,"p","error").innerText="Error : "+JSON.stringify(err);
+        }
+    } else {
+        add(output_div,"p","error").innerText="Output is wrong format";
+    }
+
 }
