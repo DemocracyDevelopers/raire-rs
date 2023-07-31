@@ -18,6 +18,7 @@ pub mod assertions;
 pub mod irv;
 pub mod audit_type;
 pub mod raire_algorithm;
+mod order_assertions;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
 pub enum RaireError {

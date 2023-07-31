@@ -18,6 +18,7 @@ use crate::audit_type::{AssertionDifficulty, AuditType};
 use crate::irv::{CandidateIndex, Votes};
 use serde::Deserialize;
 use serde::Serialize;
+use crate::order_assertions::order_assertions_and_remove_unnecessary;
 use crate::RaireError;
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -180,6 +181,6 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A) -> Result
         }
         //println!("frontier now includes {} elements",frontier.len())
     }
-    // TODO - remove redundant assertions - see "Refining our Assertion Set"
+    order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
     Ok(RaireResult{assertions, difficulty: bound , winner })
 }
