@@ -1,0 +1,15 @@
+{
+  "metadata": {
+    "candidates": ["Alice", "Bob", "Chuan","Diego" ],
+    "note" : "An example of Not-Eliminated-Before (Winner Only) assertions, from A Guide To RAIRE Example 3."
+  },
+  "num_candidates": 4,
+  "votes": [
+    { "n": 100, "prefs": [ 0, 1, 2, 3 ] },
+    { "n": 40, "prefs": [ 1, 3, 2 ] },
+    { "n": 40, "prefs": [ 2, 1, 3 ] },
+    { "n": 45, "prefs": [ 2, 3 ] }
+  ],
+  "winner": 2,
+  "audit": { "type": "Margin", "total_auditable_ballots": 225  }
+}

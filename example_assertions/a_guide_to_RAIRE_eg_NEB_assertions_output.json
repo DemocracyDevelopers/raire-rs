@@ -6,7 +6,7 @@
       "Chuan",
       "Diego"
     ],
-    "note": "Anything can go in the metadata section. Candidates names are used below if present. "
+    "note": "An example of Not-Eliminated-Before (Winner Only) assertions, from A Guide To RAIRE Example 3."
   },
   "solution": {
     "Ok": {
@@ -15,9 +15,9 @@
           "assertion": {
             "type": "NEB",
             "winner": 2,
-            "loser": 1
+            "loser": 3
           },
-          "difficulty": 3.375
+          "difficulty": 5.0
         },
         {
           "assertion": {
@@ -29,20 +29,20 @@
               2
             ]
           },
-          "difficulty": 27.0
+          "difficulty": 9.0
         },
         {
           "assertion": {
             "type": "NEN",
             "winner": 2,
-            "loser": 3,
+            "loser": 1,
             "continuing": [
               0,
-              2,
-              3
+              1,
+              2
             ]
           },
-          "difficulty": 5.4
+          "difficulty": 5.0
         },
         {
           "assertion": {
@@ -51,11 +51,12 @@
             "loser": 3,
             "continuing": [
               0,
+              1,
               2,
               3
             ]
           },
-          "difficulty": 27.0
+          "difficulty": 2.25
         },
         {
           "assertion": {
@@ -65,14 +66,13 @@
             "continuing": [
               0,
               1,
-              2,
-              3
+              2
             ]
           },
-          "difficulty": 4.5
+          "difficulty": 3.75
         }
       ],
-      "difficulty": 27.0,
+      "difficulty": 9.0,
       "winner": 2,
       "num_candidates": 4
     }

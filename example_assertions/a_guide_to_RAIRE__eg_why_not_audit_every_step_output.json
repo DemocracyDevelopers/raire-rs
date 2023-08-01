@@ -6,7 +6,7 @@
       "Chuan",
       "Diego"
     ],
-    "note": "Anything can go in the metadata section. Candidates names are used below if present. "
+    "note": "An example of why auditing every elimination step is unnecessarily expensive, from A Guide To RAIRE Example 6. RAIRE generates an efficient set of assertions despite one (irrelevant) margin being 1."
   },
   "solution": {
     "Ok": {
@@ -14,35 +14,24 @@
         {
           "assertion": {
             "type": "NEB",
-            "winner": 2,
-            "loser": 1
+            "winner": 3,
+            "loser": 2
           },
-          "difficulty": 3.375
+          "difficulty": 5.998833527745376
         },
         {
           "assertion": {
             "type": "NEN",
-            "winner": 2,
-            "loser": 0,
+            "winner": 0,
+            "loser": 2,
             "continuing": [
               0,
-              2
-            ]
-          },
-          "difficulty": 27.0
-        },
-        {
-          "assertion": {
-            "type": "NEN",
-            "winner": 2,
-            "loser": 3,
-            "continuing": [
-              0,
+              1,
               2,
               3
             ]
           },
-          "difficulty": 5.4
+          "difficulty": 7.198360327934413
         },
         {
           "assertion": {
@@ -51,11 +40,18 @@
             "loser": 3,
             "continuing": [
               0,
-              2,
               3
             ]
           },
-          "difficulty": 27.0
+          "difficulty": 9.002000500125032
+        },
+        {
+          "assertion": {
+            "type": "NEB",
+            "winner": 3,
+            "loser": 1
+          },
+          "difficulty": 5.998833527745376
         },
         {
           "assertion": {
@@ -65,15 +61,27 @@
             "continuing": [
               0,
               1,
+              3
+            ]
+          },
+          "difficulty": 3.6002600260026
+        },
+        {
+          "assertion": {
+            "type": "NEN",
+            "winner": 0,
+            "loser": 2,
+            "continuing": [
+              0,
               2,
               3
             ]
           },
-          "difficulty": 4.5
+          "difficulty": 3.5995400459954006
         }
       ],
-      "difficulty": 27.0,
-      "winner": 2,
+      "difficulty": 9.002000500125032,
+      "winner": 0,
       "num_candidates": 4
     }
   }

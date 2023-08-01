@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "candidates": [
+      "Alice",
+      "Bob",
+      "Chuan",
+      "Diego"
+    ],
+    "note": "An example set of votes that produce the assertions in A Guide To RAIRE Example 4."
+  },
+  "solution": {
+    "Ok": {
+      "assertions": [
+        {
+          "assertion": {
+            "type": "NEB",
+            "winner": 0,
+            "loser": 1
+          },
+          "difficulty": 2.0
+        },
+        {
+          "assertion": {
+            "type": "NEB",
+            "winner": 0,
+            "loser": 3
+          },
+          "difficulty": 2.0
+        },
+        {
+          "assertion": {
+            "type": "NEB",
+            "winner": 0,
+            "loser": 2
+          },
+          "difficulty": 2.0
+        }
+      ],
+      "difficulty": 2.0,
+      "winner": 0,
+      "num_candidates": 4
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "metadata": {
+    "candidates": ["Alice", "Bob", "Chuan","Diego" ],
+    "note" : "An example set of votes that produce the assertions in A Guide To RAIRE Example 4."
+  },
+  "num_candidates": 4,
+  "votes": [
+    { "n": 5000, "prefs": [ 0 ] },
+    { "n": 1000, "prefs": [ 1 ] },
+    { "n": 1000, "prefs": [ 2 ] },
+    { "n": 1000, "prefs": [ 3 ] }
+  ],
+  "winner": 0,
+  "audit": { "type": "Margin", "total_auditable_ballots": 8000  }
+}
