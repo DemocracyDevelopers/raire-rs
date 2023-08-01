@@ -131,7 +131,7 @@ function all_elimination_order_suffixes(num_candidates)  {
  * @return {string} a text description of the assertion
  */
 function assertion_description(assertion,candidate_names) {
-    const basic = candidate_names[assertion.winner]+" beats "+candidate_names[assertion.loser];
+    const basic = candidate_names[assertion.winner]+" beats "+candidate_names[assertion.loser]+" always";
     if (assertion.type==="NEB") {
         return basic;
     } else {
