@@ -25,3 +25,13 @@ function execute_raire() {
     }
     getWebJSON("raire",success,failure,input,"application/json");
 }
+
+window.onload = function () {
+    document.getElementById('InputFile').addEventListener('change', function() {
+        const filereader = new FileReader();
+        filereader.onload = () => {
+            document.getElementById("Input").value = filereader.result;
+        };
+        filereader.readAsText(this.files[0]);
+    });
+}
