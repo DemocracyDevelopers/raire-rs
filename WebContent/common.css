@@ -78,6 +78,12 @@ text.above {
     text-anchor : middle;
 }
 
+text.assertion {
+    dominant-baseline : auto;
+    text-anchor : middle;
+    font-style: italic;
+}
+
 svg {
     vertical-align: top;
 }

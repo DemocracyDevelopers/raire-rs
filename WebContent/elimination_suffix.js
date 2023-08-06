@@ -187,23 +187,6 @@ class EliminationTreeNode {
     }
 
     /**
-     * After this call, this tree and its children will occupy horizontal space from this.start_x to this.start_x+width.
-     * @param {number} start_x The number of nodes to the left of this node when drawn on a tree.
-     * @returns {number} The width (in units of number of nodes) that this tree occupies
-     */
-    computeWidths(start_x) {
-        this.start_x = start_x;
-        let width = 0;
-        for (const c of this.orderedChildren) {
-            const cw = c.computeWidths(start_x);
-            start_x+=cw;
-            width+=cw;
-        }
-        this.width = Math.max(1,width);
-        return this.width;
-    }
-
-    /**
      * The maximum height of the tree, in number of nodes.
      * @returns {number}
      */
@@ -213,6 +196,81 @@ class EliminationTreeNode {
         return 1+max_child_height;
     }
 }
+
+/**
+ * After this call, this tree and its children will occupy horizontal space from tree_node.start_x to tree_node.start_x+tree_node.width.
+ * @param {{orderedChildren:{}[],width:number,start_x:number}} tree_node The node of a tree. It (and all its children) will be assigned start_x and width fields.
+ * @param {number} start_x The number of nodes to the left of this node when drawn on a tree.
+ * @returns {number} The width (in units of number of nodes) that this tree occupies
+ */
+function computeWidthsForTreeNode(tree_node,start_x) {
+    tree_node.start_x = start_x;
+    let width = 0;
+    for (const c of tree_node.orderedChildren) {
+        const cw = computeWidthsForTreeNode(c,start_x);
+        start_x+=cw;
+        width+=cw;
+    }
+    tree_node.width = Math.max(1,width);
+    return tree_node.width;
+}
+
+/**
+ * A second way of viewing things is a tree which shows what assertions stopped it.
+ * Each tree either has children, or has an assertion showing what stopped it, or is valid.
+ * A tree with a valid child will also be valid.
+ */
+class TreeShowingWhatEliminatedItNode {
+    /**
+     * Make a new tree showing all paths until they can be elimi
+     * @param {number[]} parent_elimination_order_suffix A suffix of the elimination order corresponding to the parent of this. [] if no parent.
+     * @param {number} body The candidate index this node represents
+     * @param {{winner:number,loser:number,continuing:number[],type:string}[]} assertions A list of all the assertions that may apply to this tree
+     * @param {number} num_candidates The total number of candidates.
+     * */
+    constructor(parent_elimination_order_suffix,body,assertions,num_candidates) {
+        const elimination_order_suffix = [body].concat(parent_elimination_order_suffix);
+        this.body = body;
+        this.orderedChildren = [];
+        const assertions_requiring_more_info = [];
+        for (const assertion of assertions) {
+            let effect = assertion_ok_elimination_order_suffix(assertion,elimination_order_suffix);
+            if (effect===EffectOfAssertionOnEliminationOrderSuffix.Contradiction) {
+                this.assertion = assertion;
+                this.valid = false;
+                return;
+            } else if (effect===EffectOfAssertionOnEliminationOrderSuffix.Ok) {  } // ignore it
+            else { // must need more information.
+                assertions_requiring_more_info.push(assertion);
+            }
+        }
+        // if we got here, nothing contradicted it.
+        if (assertions_requiring_more_info.length===0) { // nothing required more info => everything OK
+            this.valid=true;
+        } else {
+            // we need to get more info
+            this.valid = false; // may be changed if any child is valid.
+            for (let candidate=0;candidate<num_candidates;candidate++) {
+                if (elimination_order_suffix.includes(candidate)) continue;
+                let child = new TreeShowingWhatEliminatedItNode(elimination_order_suffix,candidate,assertions_requiring_more_info,num_candidates);
+                if (child.valid) this.valid=true;
+                this.orderedChildren.push(child);
+            }
+        }
+    }
+
+    /**
+     * The maximum height of the tree, in number of nodes.
+     * @returns {number}
+     */
+    get height() {
+        let max_child_height = 0;
+        for (const c of this.orderedChildren) max_child_height=Math.max(max_child_height,c.height);
+        return 1+max_child_height;
+    }
+}
+
+
 
 // utilities for drawing trees below here.
 /**
@@ -263,10 +321,10 @@ function draw_trees_as_text(div,elimination_orders,candidate_names,assertion) {
  **/
 function draw_svg_tree(div,tree,candidate_names,assertion) {
     //console.log(tree);
-    tree.computeWidths(0);
+    computeWidthsForTreeNode(tree,0);
     let nodes_wide = tree.width;
-    let nodes_high = tree.height;
-    if (nodes_high<candidate_names.length) nodes_high+=1; // there will be implicit triangles below. Account for them.
+    //let nodes_high = tree.height;
+    //if (nodes_high<candidate_names.length) nodes_high+=1; // there will be implicit triangles below. Account for them.
     const pixels_per_node_x = 80;
     const pixels_per_node_y = 50;
     const node_radius = 5;
@@ -275,7 +333,7 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
     let lines = addSVG(svg,"g");
     let nodes = addSVG(svg,"g");
     svg.setAttribute("width",nodes_wide*pixels_per_node_x);
-    svg.setAttribute("height",nodes_high*pixels_per_node_y);
+    // svg.setAttribute("height",nodes_high*pixels_per_node_y);
     function drawTree(node,nodes_above_me) {
         let cx = (node.start_x+node.width/2.0)*pixels_per_node_x;
         let cy = (nodes_above_me===0?0.6:(0.5+nodes_above_me))*pixels_per_node_y;
@@ -303,10 +361,13 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
             line.setAttribute("x2",x);
             line.setAttribute("y2",y);
         }
+        let max_child_y = 0;
         for (const c of node.orderedChildren) {
             let position = drawTree(c,nodes_above_me+1);
-            drawLineTo(position.cx,position.cy,c.valid)
+            drawLineTo(position.cx,position.cy,c.valid);
+            if (position.max_y>max_child_y) max_child_y=position.max_y;
         }
+        let end_y = cy+node_radius;
         if (nodes_above_me!==candidate_names.length-1 && node.orderedChildren.length===0) { // draw a triangle below.
             let top_y = cy+0.5*pixels_per_node_y;
             let triangle_height = 30;
@@ -319,10 +380,30 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
             count.textContent=""+skipped_nodes;
             count.setAttribute("x",cx);
             count.setAttribute("y",bottom_y-5);
+            end_y = bottom_y;
         }
-        return {cx:cx,cy:cy};
+        if (node.assertion) { // explain why we stopped here.
+            // compute the lines to show.
+            const lines = [candidate_names[node.assertion.winner]+" > "+candidate_names[node.assertion.loser]];
+            const continuing = node.assertion.continuing;
+            if (continuing) {
+                lines.push("continuing:")
+                for (const candidate of continuing) lines.push(candidate_names[candidate]);
+            }
+            // show the lines
+            end_y+=5;
+            for (const line of lines) {
+                let text = addSVG(names,"text","assertion "+node.assertion.type);
+                text.textContent=line;
+                end_y+=11;
+                text.setAttribute("x",cx);
+                text.setAttribute("y",end_y)
+            }
+        }
+        return {cx:cx,cy:cy,max_y:Math.max(end_y,max_child_y)};
     }
-    drawTree(tree,0);
+    const max_y_used = drawTree(tree,0).max_y;
+    svg.setAttribute("height",max_y_used+10);
 }
 
 /**
@@ -379,7 +460,9 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     const num_candidates=candidate_names.length;
     //console.log(candidate_names);
     //console.log(assertions);
-    // removeAllChildElements(div);
+
+    // Explain the elimination method.
+    add(div,"h3").innerText="Demonstration method 1: Progressive Elimination"
     let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
     let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);
     add(div,"h5","explanation_text").innerText="We start with all possible elimination orders";
@@ -394,6 +477,15 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
         add(div,"h5","explanation_text").innerText="After applying assertion";
         draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
     }
+
+    // Explain the elimination method.
+    add(div,"h3").innerText="Demonstration method 2: Show what eliminated each possibility"
+    for (let candidate=0;candidate<candidate_names.length;candidate++) {
+        const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
+        add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
+        draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,null);
+    }
+
 }
 
 
