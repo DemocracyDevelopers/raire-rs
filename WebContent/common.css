@@ -5,6 +5,10 @@ div.error, p.error {
     color : red;
 }
 
+a.example {
+    padding-right: 1em;
+}
+
 div.computing {
     font-weight: bold;
 }

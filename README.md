@@ -33,7 +33,7 @@ file containing commands and produces and writes its output to another JSON
 file. Run it as follows (change path names for different data)
 
 ```bash
-./target/release/raire example_input/a_guide_to_RAIRE_eg.json out.json
+./target/release/raire WebContent/example_input/a_guide_to_RAIRE_eg.json out.json
 ```
 
 This will make a file `out.json` in the current directory listing the assertions.

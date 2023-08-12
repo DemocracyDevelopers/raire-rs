@@ -45,12 +45,13 @@ function removeAllChildElements(box) {
  * @param failure{function} : A callback on error, taking the error message as argument. Optional.
  * @param message{string?} : The message to send, in the case of POST. null/non-existant for GET.
  * @param contentType{string?} : Optional content type to send. Typically "multipart/form-data" or "application/x-www-form-urlencoded". Only meaningful for POST.
+ * @param responseType{XMLHttpRequestResponseType?} : Optional type to received. Default "json"
  */
 
-function getWebJSON(url,success,failure,message,contentType) {
+function getWebJSON(url,success,failure,message,contentType,responseType) {
     const xhr = new XMLHttpRequest();
     xhr.open(message?"POST":"GET",url, true);
-    xhr.responseType = 'json';
+    xhr.responseType = responseType||'json';
     if (contentType) xhr.setRequestHeader("Content-Type", contentType);
     xhr.onreadystatechange = function() { // Call a function when the state changes.
         if (this.readyState === XMLHttpRequest.DONE) {
