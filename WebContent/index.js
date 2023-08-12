@@ -1,5 +1,7 @@
 "use strict";
 
+let last_computed_output = null; // kept as a global variable so that checkbox changing doesn't have to recall execute_raire().
+
 function execute_raire() {
     let input = document.getElementById("Input").value;
     let output_div = document.getElementById("Output");
@@ -18,14 +20,20 @@ function execute_raire() {
         add(output_div,"p","error").innerText="Error : "+message;
     }
     function success(data) {
-        console.log(data);
-        removeAllChildElements(output_div);
-        removeAllChildElements(explanation_div);
-        describe_raire_result(output_div,explanation_div,data);
+        // console.log(data);
+        last_computed_output=data;
+        explain_assertions();
     }
     getWebJSON("raire",success,failure,input,"application/json");
 }
 
+function explain_assertions() {
+    let output_div = document.getElementById("Output");
+    let explanation_div = document.getElementById("Explanation");
+    removeAllChildElements(output_div);
+    removeAllChildElements(explanation_div);
+    describe_raire_result(output_div,explanation_div,last_computed_output);
+}
 
 function load_example(url) {
     function failure(message) {
@@ -61,4 +69,7 @@ window.onload = function () {
         };
         filereader.readAsText(this.files[0]);
     });
+    document.getElementById("ExpandAtStart").addEventListener('change',explain_assertions);
+    document.getElementById("DrawAsText").addEventListener('change',explain_assertions);
+    document.getElementById("HideWinner").addEventListener('change',explain_assertions);
 }

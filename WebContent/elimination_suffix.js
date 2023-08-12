@@ -455,8 +455,10 @@ function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,af
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {boolean} expand_fully_at_start If true, expand all num_candidates factorial paths. If false, use minimal elimination order suffixes (tree prefixes) where possible.
  * @param {boolean} draw_text_not_trees If true, draw as text (a list of all combinations) rather than as a SVG tree.
+ * @param {boolean} hide_winner If true, don't bother drawing trees that imply the winner won. Technically this are unnecessary, but they can be useful for intuition and sanity checking
+ * @param {number} winner_id 0 based integer saying who the winner is. Only used if hide_winner is true.
  */
-function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_not_trees) {
+function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_not_trees,hide_winner,winner_id) {
     const num_candidates=candidate_names.length;
     //console.log(candidate_names);
     //console.log(assertions);
@@ -465,7 +467,10 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     add(div,"h3").innerText="Demonstration method 1: Progressive Elimination"
     let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
     let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);
-    add(div,"h5","explanation_text").innerText="We start with all possible elimination orders";
+    if (hide_winner) {
+        elimination_orders=elimination_orders.filter(order=>order[order.length-1]!==winner_id);
+    }
+    add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
     draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
     for (const assertion of assertions) {
         add(div,"h4","assertion_name").innerText="Assertion : "+assertion_description(assertion,candidate_names);
@@ -481,6 +486,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     // Explain the elimination method.
     add(div,"h3").innerText="Demonstration method 2: Show what eliminated each possibility"
     for (let candidate=0;candidate<candidate_names.length;candidate++) {
+        if (hide_winner && candidate===winner_id) continue;
         const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
         add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
         draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,null);
@@ -524,7 +530,19 @@ function describe_raire_result(output_div,explanation_div,data) {
             for (let i=0;i<parsed_input.num_candidates;i++) { candidate_names.push("Candidate "+i); }
         }
         if (data.metadata.hasOwnProperty("contest")) add(explanation_div,"h4").innerText="Contest : "+data.metadata.contest;
-        explain(explanation_div,data.solution.Ok.assertions.map(a=>a.assertion),candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked);
+        const hide_winner = document.getElementById("HideWinner").checked;
+        let winner_id = data.solution.Ok.winner;
+        const assertions = data.solution.Ok.assertions.map(a=>a.assertion);
+        /* code to deduce the winner if not present, but it should always be there.
+        if (hide_winner && winner_id===undefined) {
+            for (let candidate=0;candidate<candidate_names.length;candidate++) {
+                const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
+                if (tree.valid) {
+                    if (winner_id===null) winner_id=candidate; else { add(explanation_div,"div","error").innerText="Could not determine winner from assertions" ; return; }
+                }
+            }
+        }*/
+        explain(explanation_div,assertions,candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked,hide_winner,winner_id);
     } else if (data.solution && data.solution.Err) {
         let err = data.solution.Err;
         if (err==="Timeout") {

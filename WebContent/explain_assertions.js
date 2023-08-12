@@ -148,4 +148,7 @@ window.onload = function () {
         };
         filereader.readAsText(this.files[0]);
     });
+    document.getElementById("ExpandAtStart").addEventListener('change',explain_assertions);
+    document.getElementById("DrawAsText").addEventListener('change',explain_assertions);
+    document.getElementById("HideWinner").addEventListener('change',explain_assertions);
 }
