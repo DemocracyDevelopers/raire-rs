@@ -26,7 +26,34 @@ function execute_raire() {
     getWebJSON("raire",success,failure,input,"application/json");
 }
 
+
+function load_example(url) {
+    function failure(message) {
+        alert("Could not load "+url+" sorry. Message :"+message);
+    }
+    function success(text) {
+        document.getElementById("Input").value=text;
+        execute_raire();
+    }
+    getWebJSON(url,success,failure,null,null,"text");
+}
+
+function make_examples() {
+    function make_example(name,url,where) {
+        const dom = document.getElementById(where);
+        const a = add(dom,"a","example");
+        a.href = url;
+        a.textContent = name;
+        a.onclick = function () { load_example(url); return false; }
+    }
+    // make "a guide to RAIRE" examples
+    for (const name of ["guide","NEB_assertions","one_candidate_dominates","two_leading_candidates","why_not_audit_every_step"]) {
+        make_example(name.replace("_"," "),"example_input/a_guide_to_RAIRE_eg_"+name+".json","EgGuideToRaire");
+    }
+}
+
 window.onload = function () {
+    make_examples();
     document.getElementById('InputFile').addEventListener('change', function() {
         const filereader = new FileReader();
         filereader.onload = () => {

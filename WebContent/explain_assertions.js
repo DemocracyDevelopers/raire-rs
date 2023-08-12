@@ -132,7 +132,7 @@ function make_examples() {
         a.onclick = function () { load_example(url); return false; }
     }
     // make "a guide to RAIRE" examples
-    for (const name of ["NEB_assertions_output","one_candidate_dominates","out","two_leading_candidates","why_not_audit_every_step_output"]) {
+    for (const name of ["guide","NEB_assertions","one_candidate_dominates","two_leading_candidates","why_not_audit_every_step"]) {
         make_example(name.replace("_"," "),"example_assertions/a_guide_to_RAIRE_eg_"+name+".json","EgGuideToRaire");
     }
     make_example("San Francisco IRV RLA pilot 2019","https://raw.githubusercontent.com/DemocracyDevelopers/SHANGRLA/main/shangrla/Examples/Data/SF2019Nov8Assertions.json","MichelleExamples");
