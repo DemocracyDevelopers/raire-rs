@@ -83,6 +83,8 @@ impl Contest {
             votes: votes.votes,
             winner,
             audit,
+            trim_algorithm: None,
+            difficulty_estimate: None,
         })
     }
 }

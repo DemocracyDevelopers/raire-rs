@@ -10,7 +10,7 @@
 
 use crate::audit_type::Audit;
 use crate::irv::{CandidateIndex, Vote, Votes};
-use crate::raire_algorithm::{raire, RaireResult};
+use crate::raire_algorithm::{raire, RaireResult, TrimAlgorithm};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -19,6 +19,7 @@ pub mod irv;
 pub mod audit_type;
 pub mod raire_algorithm;
 mod order_assertions;
+pub mod tree_showing_what_assertions_pruned_leaves;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
 pub enum RaireError {
@@ -33,7 +34,11 @@ pub enum RaireError {
     #[error("the asserted winner was not actually the winner - expecting {0:?}")]
     WrongWinner(Vec<CandidateIndex>),
     #[error("could not rule out the elimination order {0:?}")]
-    CouldNotRuleOut(Vec<CandidateIndex>)
+    CouldNotRuleOut(Vec<CandidateIndex>),
+    #[error("internal error - ruled out the winner")]
+    InternalErrorRuledOutWinner,
+    #[error("internal error - did not rule out a loser")]
+    InternalErrorDidntRuleOutLoser,
 }
 /// This file contains an API suitable for a web service.
 
@@ -44,6 +49,12 @@ pub struct RaireProblem {
     pub votes : Vec<Vote>,
     pub winner : CandidateIndex,
     pub audit : Audit,
+    /// the algorithm used to trim.
+    #[serde(default,skip_serializing_if = "Option::is_none")]
+    pub trim_algorithm : Option<TrimAlgorithm>,
+    /// don't bother optimizing below this difficulty level. A value of this > 0 may make the algorithm faster, but may make the results worse, but no worse than this.
+    #[serde(default,skip_serializing_if = "Option::is_none")]
+    pub difficulty_estimate : Option<f64>,
 }
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -55,7 +66,7 @@ pub struct RaireSolution {
 impl RaireProblem {
     pub fn solve(self) -> RaireSolution {
         let votes = Votes::new(self.votes,self.num_candidates);
-        let solution = raire(&votes,self.winner,&self.audit);
+        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::Slow));
         RaireSolution{metadata:self.metadata,solution}
     }
 }

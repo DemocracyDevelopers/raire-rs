@@ -18,7 +18,6 @@ use crate::audit_type::{AssertionDifficulty, AuditType};
 use crate::irv::{CandidateIndex, Votes};
 use serde::Deserialize;
 use serde::Serialize;
-use crate::order_assertions::order_assertions_and_remove_unnecessary;
 use crate::RaireError;
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -111,7 +110,7 @@ fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A) -> A
     res
 }
 
-pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A) -> Result<RaireResult,RaireError> {
+pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
     let irv_result = votes.run_election();
     if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
     if irv_result.possible_winners.len()!=1 { return Err(RaireError::TiedWinners(irv_result.possible_winners))}
@@ -182,6 +181,23 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A) -> Result
         }
         //println!("frontier now includes {} elements",frontier.len())
     }
-    order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
+    match trim_algorithm {
+        TrimAlgorithm::Slow => {
+            crate::order_assertions::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
+        }
+        TrimAlgorithm::Simple => {
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),false)?;
+        }
+        TrimAlgorithm::SimpleWithChildren => {
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),true)?;
+        }
+    }
     Ok(RaireResult{assertions, difficulty: bound , winner,num_candidates:votes.num_candidates() })
+}
+
+#[derive(Clone,Copy,Debug,Serialize,Deserialize)]
+pub enum TrimAlgorithm {
+    Slow,
+    Simple,
+    SimpleWithChildren,
 }
