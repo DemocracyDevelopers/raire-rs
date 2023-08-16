@@ -28,7 +28,7 @@ pub struct TreeNodeShowingWhatAssertionsPrunedIt {
 
 impl TreeNodeShowingWhatAssertionsPrunedIt {
     /// Create a new tree node with a given path back to the root and candidate being eliminated.
-    pub fn new (parent_elimination_order_suffix:&[CandidateIndex], candidate_being_eliminated_at_this_node:CandidateIndex, relevant_assertions:&[usize],all_assertions:&[Assertion],num_candidates:u32,consider_children_of_eliminated_nodes:bool) -> Self {
+    pub fn new (parent_elimination_order_suffix:&[CandidateIndex], candidate_being_eliminated_at_this_node:CandidateIndex, relevant_assertions:&[usize],all_assertions:&[Assertion],num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound) -> Self {
         let mut elimination_order_suffix=vec![candidate_being_eliminated_at_this_node]; // elimination order including this node
         elimination_order_suffix.extend_from_slice(parent_elimination_order_suffix);
         let mut pruning_assertions : Vec<usize> = vec![];
@@ -42,23 +42,51 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
         }
         let mut children : Vec<Self> = vec![];
         let mut valid : bool = pruning_assertions.is_empty() && still_relevant_assertions.is_empty();
-        if (pruning_assertions.is_empty()||consider_children_of_eliminated_nodes) && !still_relevant_assertions.is_empty() {
+        if (pruning_assertions.is_empty()||consider_children_of_eliminated_nodes.should_continue_if_pruning_assertion_found()) && !still_relevant_assertions.is_empty() {
+            let next_consider_children_of_eliminated_nodes = if pruning_assertions.is_empty() { consider_children_of_eliminated_nodes } else { consider_children_of_eliminated_nodes.next_level_if_pruning_assertion_found() };
             for candidate in 0..num_candidates {
                 let candidate = CandidateIndex(candidate);
                 if !elimination_order_suffix.contains(&candidate) { // could make more efficient by using binary search,
-                    let child = TreeNodeShowingWhatAssertionsPrunedIt::new(&elimination_order_suffix,candidate,&still_relevant_assertions,all_assertions,num_candidates,consider_children_of_eliminated_nodes&&pruning_assertions.is_empty());
-                    if child.valid { valid=true; }
+                    let child = TreeNodeShowingWhatAssertionsPrunedIt::new(&elimination_order_suffix,candidate,&still_relevant_assertions,all_assertions,num_candidates,next_consider_children_of_eliminated_nodes);
+                    if child.valid {
+                        if pruning_assertions.is_empty() {
+                            valid=true;
+                        } else { // we were continuing searching beyond a pruned branch. There is no point doing this.
+                            children.clear();
+                            break;
+                        }
+                    }
                     children.push(child);
                 }
             }
         }
-        if consider_children_of_eliminated_nodes && !pruning_assertions.is_empty() {
-            if valid { // at least one of the children was not ruled out. Going an additional step is not useful.
-                children.clear();
-                valid=false;
-            }
-        }
         TreeNodeShowingWhatAssertionsPrunedIt{candidate_being_eliminated_at_this_node,pruning_assertions,children,valid}
+    }
+}
+
+#[derive(Copy, Clone,Debug)]
+pub enum HowFarToContinueSearchTreeWhenPruningAssertionFound {
+    /// When a pruning assertion is found, don't look any further. Minimizes size of pruning tree.
+    StopImmediately,
+    /// When a pruning assertion is found, continue and see if its children are sufficient to stop it.
+    ContinueOnce,
+    /// When a pruning assertion is found, continue. Don't stop unless no assertions left.
+    Forever,
+}
+
+impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
+    fn should_continue_if_pruning_assertion_found(self) -> bool {
+        match self {
+            Self::StopImmediately => false,
+            _ => true,
+        }
+    }
+    fn next_level_if_pruning_assertion_found(self) -> Self {
+        match self {
+            Self::StopImmediately => Self::StopImmediately, // should never happen.
+            Self::ContinueOnce => Self::StopImmediately,
+            Self::Forever => Self::Forever,
+        }
     }
 }
 
@@ -69,7 +97,7 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
 ///
 /// consider_children_of_eliminated_nodes, if true, will take a little longer and possibly produce a smaller number of assertions
 /// at the cost of a larger tree size for the eliminated paths tree.
-pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:bool) -> Result<(),RaireError> {
+pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound) -> Result<(),RaireError> {
     assertions.sort_unstable_by(|a,b|{
         // sort all NENs before NEBs,
         // sort NENs by length
@@ -167,7 +195,7 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
 mod tests {
     use crate::assertions::{Assertion, NotEliminatedBefore, NotEliminatedNext};
     use crate::irv::CandidateIndex;
-    use crate::tree_showing_what_assertions_pruned_leaves::TreeNodeShowingWhatAssertionsPrunedIt;
+    use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
     fn raire_guide_assertions() -> Vec<Assertion> {
         vec![
@@ -184,10 +212,10 @@ mod tests {
     fn it_works() {
         let all_assertions = raire_guide_assertions();
         let relevant_assertions : Vec<usize> = (0..all_assertions.len()).collect();
-        let tree0 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(0),&relevant_assertions,&all_assertions,4,false);
-        let tree1 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(1),&relevant_assertions,&all_assertions,4,false);
-        let tree2 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(2),&relevant_assertions,&all_assertions,4,false);
-        let tree3 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(3),&relevant_assertions,&all_assertions,4,false);
+        let tree0 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(0),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+        let tree1 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(1),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+        let tree2 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(2),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+        let tree3 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(3),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
         assert_eq!(false,tree0.valid);
         assert_eq!(3,tree0.children.len());
         assert_eq!(vec![4],tree0.children[0].pruning_assertions);

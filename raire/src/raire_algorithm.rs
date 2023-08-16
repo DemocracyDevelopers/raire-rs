@@ -19,6 +19,7 @@ use crate::irv::{CandidateIndex, Votes};
 use serde::Deserialize;
 use serde::Serialize;
 use crate::RaireError;
+use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct RaireResult {
@@ -49,7 +50,16 @@ impl RaireResult {
         elimination_orders
     }
 
-
+    pub fn verify_result_does_prove_winner(&self) -> Result<(),RaireError> {
+        let all_assertions : Vec<Assertion> = self.assertions.iter().map(|ad|ad.assertion.clone()).collect();
+        let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
+        for candidate in 0..self.num_candidates {
+            let candidate = CandidateIndex(candidate);
+            let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,self.num_candidates,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+            if tree.valid!= (candidate==self.winner) { return Err(if candidate==self.winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -186,10 +196,13 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
             crate::order_assertions::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
         }
         TrimAlgorithm::Simple => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),false)?;
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately)?;
         }
         TrimAlgorithm::SimpleWithChildren => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),true)?;
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::ContinueOnce)?;
+        }
+        TrimAlgorithm::SimpleWithAllChildren => {
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever)?;
         }
     }
     Ok(RaireResult{assertions, difficulty: bound , winner,num_candidates:votes.num_candidates() })
@@ -200,4 +213,5 @@ pub enum TrimAlgorithm {
     Slow,
     Simple,
     SimpleWithChildren,
+    SimpleWithAllChildren,
 }

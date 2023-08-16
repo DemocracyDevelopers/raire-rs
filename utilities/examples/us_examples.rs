@@ -13,6 +13,7 @@
 use std::time::SystemTime;
 use raire::audit_type::{Audit, BallotComparisonOneOnDilutedMargin};
 use raire::irv::BallotPaperCount;
+use raire::raire_algorithm::TrimAlgorithm;
 use utilities::parse_michelle_format::Contest;
 
 fn main() -> anyhow::Result<()> {
@@ -24,14 +25,16 @@ fn main() -> anyhow::Result<()> {
             for contest_index in 0..contests.len() {
                 let contest = &contests[contest_index];
                 let num_ballots : usize = contest.votes.values().sum();
-                let problem = contests[contest_index].to_raire_problem(Audit::Margin(BallotComparisonOneOnDilutedMargin{total_auditable_ballots:BallotPaperCount(num_ballots)}))?;
+                let mut problem = contests[contest_index].to_raire_problem(Audit::Margin(BallotComparisonOneOnDilutedMargin{total_auditable_ballots:BallotPaperCount(num_ballots)}))?;
+                problem.trim_algorithm=Some(TrimAlgorithm::SimpleWithChildren);
                 println!("{} contest {} with {} candidates {} ballots of which {} are distinct",entry.file_name().to_string_lossy(),contest_index+1,problem.num_candidates,num_ballots,problem.votes.len());
                 let time_start = SystemTime::now();
                 let solution = problem.solve();
                 let time_taken = SystemTime::now().duration_since(time_start)?;
                 match & solution.solution {
                     Ok(result) => {
-                        println!("Solved in {:?} difficulty {} with {} assertions",time_taken,result.difficulty,result.assertions.len())
+                        println!("Solved in {:?} difficulty {} with {} assertions",time_taken,result.difficulty,result.assertions.len());
+                        result.verify_result_does_prove_winner()?;
                     }
                     Err(error) => {
                         println!("Could not solve in {:?} reason {}",time_taken,error);
