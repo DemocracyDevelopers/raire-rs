@@ -39,6 +39,8 @@ pub enum RaireError {
     InternalErrorRuledOutWinner,
     #[error("internal error - did not rule out a loser")]
     InternalErrorDidntRuleOutLoser,
+    #[error("internal error - trimming couldn't work")]
+    InternalErrorTrimming,
 }
 /// This file contains an API suitable for a web service.
 
@@ -66,7 +68,7 @@ pub struct RaireSolution {
 impl RaireProblem {
     pub fn solve(self) -> RaireSolution {
         let votes = Votes::new(self.votes,self.num_candidates);
-        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::Slow));
+        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree));
         RaireSolution{metadata:self.metadata,solution}
     }
 }

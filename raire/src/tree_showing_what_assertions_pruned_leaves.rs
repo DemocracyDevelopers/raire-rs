@@ -99,12 +99,12 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
 /// at the cost of a larger tree size for the eliminated paths tree.
 pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound) -> Result<(),RaireError> {
     assertions.sort_unstable_by(|a,b|{
-        // sort all NENs before NEBs,
+        // sort all NEBs before NENs,
         // sort NENs by length
         // ties - sort by winner, then loser, then continuing
         match (&a.assertion,&b.assertion) {
-            (Assertion::NEN(_), Assertion::NEB(_)) => Ordering::Less,
-            (Assertion::NEB(_), Assertion::NEN(_)) => Ordering::Greater,
+            (Assertion::NEN(_), Assertion::NEB(_)) => Ordering::Greater,
+            (Assertion::NEB(_), Assertion::NEN(_)) => Ordering::Less,
             (Assertion::NEN(a), Assertion::NEN(b)) => {
                 a.continuing.len().cmp(&b.continuing.len()).then_with(||a.winner.0.cmp(&b.winner.0).then_with(||a.loser.0.cmp(&b.loser.0)).then_with(||{
                     // compare continuing
@@ -134,6 +134,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     for tree in trees {
         find_used.add_tree_second_pass(&tree);
     }
+    find_used.finish_second_pass()?;
     let mut res = vec![];
     for (index,a) in assertions.drain(..).enumerate() {
         if find_used.uses(index) { res.push(a); }
@@ -143,7 +144,8 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     Ok(())
 }
 
-/// a really simplistic method of computing which assertions are used - just use the first from each list. Benefits: fast, simple. Drawbacks: Not optimal.
+/// a really simplistic method of computing which assertions are used - just use the first from each list. Benefits: fast, simple. Drawbacks: Not optimal in general.
+/// However, almost always it will end up being optimal if the HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever option is used.
 struct SimplisticWorkOutWhichAssertionsAreUsed {
     assertions_used : Vec<bool>,
 }
@@ -154,13 +156,13 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
     /// Some (most) nodes have exactly one assertion. Assign these assertions, as they MUST be used.
     fn add_tree_forced(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) {
         if node.pruning_assertions.len()>0 {
-            print!("{}",node.pruning_assertions.len());
+            //print!("{}",node.pruning_assertions.len());
             if node.children.is_empty() {
                 if node.pruning_assertions.len()==1 { // must be used
                     self.assertions_used[node.pruning_assertions[0]]=true;
                 }
             } else {
-                print!("*");
+                //print!("*");
             }
         } else {
             for child in &node.children {
@@ -177,7 +179,7 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
     }
     fn add_tree_second_pass(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) {
         if node.pruning_assertions.len()>0 {
-            print!("{}",node.pruning_assertions.len());
+            //print!("{}",node.pruning_assertions.len());
             if !self.node_already_eliminated(node) { // not already solved by one assertion that rules out this node.
                 // none already used. Simplistically take the first one.
                 self.assertions_used[node.pruning_assertions[0]]=true;
@@ -188,8 +190,123 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
             }
         }
     }
+    fn finish_second_pass(&self)  -> Result<(),RaireError> {Ok(())}
 }
 
+/*
+use xdd::{BDDFactory, DecisionDiagramFactory, NodeIndex, NoMultiplicity, VariableIndex};
+use std::collections::HashMap;
+
+/// a more complex method of computing which assertions are used - just use the first from each list. Benefits: minimizes number of assertions. Drawbacks: often much slower, complex, requires dependencies.
+/// This is not used as the simplistic method turns out to be optimal on all samples tested when the Forever option is used, and it is prohibitively slow when the ContinueOnce option is used.
+struct OptimalWorkOutWhichAssertionsAreUsed {
+    simple : SimplisticWorkOutWhichAssertionsAreUsed,
+    factory : BDDFactory<u32,NoMultiplicity>,
+    required : NodeIndex<u32,NoMultiplicity>,
+    variables : GetXDDVariable,
+}
+
+impl OptimalWorkOutWhichAssertionsAreUsed {
+    fn new(len:usize) -> Result<Self,RaireError> {
+        if len>u16::MAX as usize { Err(RaireError::InternalErrorTrimming) }
+        else {
+            let variables = GetXDDVariable::new(len);
+            Ok(Self{simple:SimplisticWorkOutWhichAssertionsAreUsed::new(len), factory: BDDFactory::new(variables.max_variable), required:NodeIndex::TRUE, variables })
+        }
+    }
+    fn uses(&self,index:usize) -> bool { self.simple.uses(index) }
+    /// Some (most) nodes have exactly one assertion. Assign these assertions, as they MUST be used.
+    fn add_tree_forced(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) {
+        self.simple.add_tree_forced(node);
+    }
+    /// compute an xdd function representing the constraints implied by the tree
+    fn tree_to_xdd(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) -> NodeIndex<u32,NoMultiplicity> {
+        if node.pruning_assertions.iter().any(|&a|self.uses(a)) {
+            // short cut, nothing to do as the first pass dealt with it!
+            print!("!");
+            return NodeIndex::TRUE;
+        }
+        // compute an xdd function representing the constraints implied by the children of this node
+        let children = if node.children.is_empty() { NodeIndex::FALSE} else {
+            let mut res = NodeIndex::TRUE;
+            for child in &node.children {
+                let child_xdd = self.tree_to_xdd(child);
+                res = self.factory.and(res,child_xdd);
+            }
+            res
+        };
+        if children.is_true() {// short cut, nothing to do as the first pass dealt with it via children!
+            print!("^");
+            return NodeIndex::TRUE;
+        }
+        // compute an xdd function representing the constraints implied by the pruning_assertions of this node
+        let direct = {
+            let mut res = NodeIndex::FALSE;
+            for &a in &node.pruning_assertions {
+                let variable = self.variables.variable(a);
+                let a_xdd = self.factory.single_variable(variable);
+                res = self.factory.or(res,a_xdd);
+            }
+            res
+        };
+        print!(".");
+        self.factory.or(direct,children)
+    }
+    fn add_tree_second_pass(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) {
+        let tree = self.tree_to_xdd(node);
+        self.required=self.factory.and(tree,self.required);
+        println!("xdd sub-size {}",self.factory.len());
+        let renamer = self.factory.gc([self.required]);
+        self.required=renamer.rename(self.required).expect("Lost main point");
+        println!("xdd sub-size {}",self.factory.len());
+    }
+    fn finish_second_pass(&mut self) -> Result<(),RaireError> {
+        println!("xdd size {}",self.factory.len());
+        let solution = self.factory.find_satisfying_solution_with_minimum_number_of_variables(self.required).ok_or(RaireError::InternalErrorTrimming)?;
+        for v in solution {
+            let assertion = self.variables.decode(v);
+            self.simple.assertions_used[assertion]=true;
+        }
+        Ok(())
+    }
+
+}
+
+/// Order XDD variables in inverse order that they are received.
+struct GetXDDVariable {
+    max_variable : u16,
+    next_variable : u16,
+    variable_of_assertion : Vec<Option<VariableIndex>>,
+    assertion_of_variable : Vec<usize>
+}
+
+impl GetXDDVariable {
+    fn new(len:usize) -> Self {
+        GetXDDVariable {
+            max_variable: u16::MAX - 10, // The -10 is probably not needed.
+            next_variable: u16::MAX - 10, // The -10 is probably not needed.
+            variable_of_assertion: vec![None;len],
+            assertion_of_variable: vec![],
+        }
+    }
+    fn variable(&mut self,assertion:usize) -> VariableIndex {
+        if let Some(v) = self.variable_of_assertion[assertion] {
+            v
+        } else {
+            let v = VariableIndex(self.next_variable);
+            self.next_variable-=1; // Should have some check against underflow.
+            self.variable_of_assertion[assertion]=Some(v);
+            self.assertion_of_variable.push(assertion);
+            v
+        }
+    }
+    fn decode(&self,variable:VariableIndex) -> usize {
+        let index = (self.max_variable-variable.0) as usize;
+        self.assertion_of_variable[index]
+    }
+    fn len(&self) -> u16 { self.max_variable-self.next_variable }
+}
+*/
 
 #[cfg(test)]
 mod tests {

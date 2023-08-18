@@ -192,16 +192,14 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
         //println!("frontier now includes {} elements",frontier.len())
     }
     match trim_algorithm {
+        TrimAlgorithm::None => {}
         TrimAlgorithm::Slow => {
             crate::order_assertions::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
         }
-        TrimAlgorithm::Simple => {
+        TrimAlgorithm::MinimizeTree => {
             crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately)?;
         }
-        TrimAlgorithm::SimpleWithChildren => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::ContinueOnce)?;
-        }
-        TrimAlgorithm::SimpleWithAllChildren => {
+        TrimAlgorithm::MinimizeAssertions => {
             crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever)?;
         }
     }
@@ -209,9 +207,47 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]
+/// After the RAIRE algorithm has generated the assertions, it is possible that there are redundant assertions.
+///
+/// This could happen as the algorithm found some assertion to trim one path, and then later some other
+/// assertion is added to trim some other path, but it turns out that it also trims the path trimmed earlier
+/// by some other assertion.
+///
+/// There are a variety of algorithms for removing redundant assertions. It depends what you want to minimize.
+///
+/// Example: In the very simple case given in the "Guide to RAIRE", there
+/// are the assertions (and difficulties):
+/// ```text
+/// A1: 3     NEN: Alice > Diego if only {Alice,Diego} remain
+/// A2: 27    NEN: Chuan > Alice if only {Alice,Chuan} remain
+/// A3: 27    NEN: Alice > Diego if only {Alice,Chuan,Diego} remain
+/// A4: 5.4   NEN: Chuan > Diego if only {Alice,Chuan,Diego} remain
+/// A5: 4.5   NEN: Alice > Bob if only {Alice,Bob,Chuan,Diego} remain
+/// A6: 3.375 Chuan NEB Bob
+/// ```
+///
+/// The elimination order `[...Alice,Diego]` is eliminated by `A1`.
+///
+/// However, `[...,Bob,Alice,Diego]` is eliminated by `A6`, and
+/// `[Chuan,Alice,Diego]` is eliminated by `A4`.
+///
+/// So `A1` is technically unnecessary to prove who is elected, and `A6` and `A4`
+/// are both needed elsewhere. But `A1` is necessary if you want to minimize
+/// the elimination tree size.
+///
+/// It is not clear what we want to minimize. A larger number of assertions
+/// for a smaller tree is easier for a human to verify (probably), but has
+/// a slightly higher chance of requiring an escalation.
+///
+/// This gives you options. `MinimizeTree` (and `None`) will leave in `A1`, but
+/// `MinimizeAssertions` will remove `A1`.
 pub enum TrimAlgorithm {
+    /// Don't do any trimming
+    None,
+    /// You probably don't want to do this. It is the original algorithm I came up with which is gratuitously slow and not optimal. Left temporarily for historical reasons, will be deleted soon.
     Slow,
-    Simple,
-    SimpleWithChildren,
-    SimpleWithAllChildren,
+    /// Expand the tree until an assertion rules the path out, removing redundant assertions with a simple heuristic. Minimizes size of tree for human to verify, but may have unnecessary assertions.
+    MinimizeTree,
+    /// Expand the tree until all all assertions are resolved, and remove redundant assertions with a simple heuristic. Minimizes the number of assertions, but may increase the size of the tree to verify.
+    MinimizeAssertions,
 }

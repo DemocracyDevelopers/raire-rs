@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
                 let contest = &contests[contest_index];
                 let num_ballots : usize = contest.votes.values().sum();
                 let mut problem = contests[contest_index].to_raire_problem(Audit::Margin(BallotComparisonOneOnDilutedMargin{total_auditable_ballots:BallotPaperCount(num_ballots)}))?;
-                problem.trim_algorithm=Some(TrimAlgorithm::SimpleWithChildren);
+                problem.trim_algorithm=Some(TrimAlgorithm::MinimizeAssertions);
                 println!("{} contest {} with {} candidates {} ballots of which {} are distinct",entry.file_name().to_string_lossy(),contest_index+1,problem.num_candidates,num_ballots,problem.votes.len());
                 let time_start = SystemTime::now();
                 let solution = problem.solve();
