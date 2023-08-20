@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = {version="1.0", features = ["derive"]}
+serde = {version="=1.0.171", features = ["derive"]}
 serde_json = "1.0"
 thiserror = "1.0"
 # Version 0.2 (unreleased) of the xdd crate is needed if this is used, which we don't need.
