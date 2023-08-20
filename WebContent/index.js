@@ -28,6 +28,7 @@ function execute_raire() {
 }
 
 function explain_assertions() {
+    checkOptionVisibility();
     let output_div = document.getElementById("Output");
     let explanation_div = document.getElementById("Explanation");
     removeAllChildElements(output_div);
@@ -62,6 +63,7 @@ function make_examples() {
 
 window.onload = function () {
     make_examples();
+    checkOptionVisibility();
     document.getElementById('InputFile').addEventListener('change', function() {
         const filereader = new FileReader();
         filereader.onload = () => {
@@ -72,4 +74,5 @@ window.onload = function () {
     document.getElementById("ExpandAtStart").addEventListener('change',explain_assertions);
     document.getElementById("DrawAsText").addEventListener('change',explain_assertions);
     document.getElementById("HideWinner").addEventListener('change',explain_assertions);
+    document.getElementById("ShowEffectOfEachAssertionSeparately").addEventListener('change',explain_assertions);
 }

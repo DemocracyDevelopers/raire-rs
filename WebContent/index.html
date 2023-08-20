@@ -45,9 +45,12 @@ This shows a human readable version of it.</p>
 <div id="Output"> </div>
 
 <h3>Explanation of why it works</h3>
-<input type="checkbox" id="ExpandAtStart"/><label for="ExpandAtStart">Expand fully all elimination orders at start</label><br/>
-<input type="checkbox" id="DrawAsText"/><label for="ExpandAtStart">Draw as text rather than trees</label><br/>
+<input type="checkbox" id="ShowEffectOfEachAssertionSeparately"/><label for="ShowEffectOfEachAssertionSeparately">Show effect of each assertion sequentially (can be slow)</label><br/>
 <input type="checkbox" id="HideWinner"/><label for="HideWinner">Don't bother drawing the (technically unnecessary) trees for the winning candidate.</label><br/>
+<div id="IfShowEffectOfEachAssertionSeparately">
+    <input type="checkbox" id="ExpandAtStart"/><label for="ExpandAtStart">Expand fully all elimination orders at start</label><br/>
+    <input type="checkbox" id="DrawAsText"/><label for="ExpandAtStart">Draw as text rather than trees</label><br/>
+</div>
 
 <div id="Explanation"> </div>
 </body>

@@ -462,38 +462,46 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     const num_candidates=candidate_names.length;
     //console.log(candidate_names);
     //console.log(assertions);
+    const show_separately = document.getElementById("ShowEffectOfEachAssertionSeparately").checked;
 
-    // Explain the elimination method.
-    add(div,"h3").innerText="Demonstration method 1: Progressive Elimination"
-    let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
-    let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);
-    if (hide_winner) {
-        elimination_orders=elimination_orders.filter(order=>order[order.length-1]!==winner_id);
-    }
-    add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
-    draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
-    for (const assertion of assertions) {
-        add(div,"h4","assertion_name").innerText="Assertion : "+assertion_description(assertion,candidate_names);
-        elimination_orders = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,true);
-        const elimination_orders_after = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,false);
-        add(div,"h5","explanation_text").innerText="Evaluate assertion, expanding paths if necessary";
-        draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after);
-        elimination_orders = elimination_orders_after;
-        add(div,"h5","explanation_text").innerText="After applying assertion";
+    if (show_separately) {
+        // Explain the elimination method.
+        add(div,"h3").innerText="Demonstration by progressive elimination"
+        let draw_trees = draw_text_not_trees?draw_trees_as_text:draw_trees_as_trees;
+        let elimination_orders = expand_fully_at_start?all_elimination_orders(num_candidates):all_elimination_order_suffixes(num_candidates);
+        if (hide_winner) {
+            elimination_orders=elimination_orders.filter(order=>order[order.length-1]!==winner_id);
+        }
+        add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
         draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
-    }
-
-    // Explain the elimination method.
-    add(div,"h3").innerText="Demonstration method 2: Show what eliminated each possibility"
-    for (let candidate=0;candidate<candidate_names.length;candidate++) {
-        if (hide_winner && candidate===winner_id) continue;
-        const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
-        add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
-        draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,null);
+        for (const assertion of assertions) {
+            add(div,"h4","assertion_name").innerText="Assertion : "+assertion_description(assertion,candidate_names);
+            elimination_orders = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,true);
+            const elimination_orders_after = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,false);
+            add(div,"h5","explanation_text").innerText="Evaluate assertion, expanding paths if necessary";
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after);
+            elimination_orders = elimination_orders_after;
+            add(div,"h5","explanation_text").innerText="After applying assertion";
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
+        }
+    } else {
+        // Explain the elimination method.
+        add(div,"h3").innerText="Demonstration by showing what eliminated each possibility"
+        for (let candidate=0;candidate<candidate_names.length;candidate++) {
+            if (hide_winner && candidate===winner_id) continue;
+            const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
+            add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
+            draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,null);
+        }
     }
 
 }
 
+function checkOptionVisibility() {
+    const show_separately = document.getElementById("ShowEffectOfEachAssertionSeparately").checked;
+    const applies_to = document.getElementById("IfShowEffectOfEachAssertionSeparately");
+    if (applies_to) applies_to.style.display=show_separately?"":"none";
+}
 
 function describe_raire_result(output_div,explanation_div,data) {
     function candidate_name(id) {
