@@ -17,6 +17,7 @@ use raire::raire_algorithm::TrimAlgorithm;
 use utilities::parse_michelle_format::Contest;
 
 fn main() -> anyhow::Result<()> {
+    env_logger::Builder::from_default_env().format_timestamp_millis().filter_level(log::LevelFilter::Trace).init();
     let folder = "../audit-irv-cp-raire-branch/USIRV/";
     for entry in std::fs::read_dir(folder)? {
         let entry = entry?;

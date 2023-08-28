@@ -121,13 +121,16 @@ fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A) -> A
 }
 
 pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
+    log::debug!("Starting raire with {} candidates and {} distinct votes",votes.num_candidates(),votes.votes.len());
     let irv_result = votes.run_election();
     if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
     if irv_result.possible_winners.len()!=1 { return Err(RaireError::TiedWinners(irv_result.possible_winners))}
+    log::debug!("IRV winner {} elimination order {:?}",winner,irv_result.elimination_order);
     //println!("Calling raire with {} votes {} candidates winner {}",votes.total_votes(),votes.num_candidates(),winner);
     let mut assertions : Vec<AssertionAndDifficulty> = vec![]; // A in the original paper
     let mut bound : AssertionDifficulty = 0.0; // LB in the original paper
     let mut frontier = BinaryHeap::new(); // F in the original paper
+    let mut last_difficulty:f64 = f64::INFINITY;
     // Populate F with single-candidate sequences
     for c in 0..votes.num_candidates() {
         let c = CandidateIndex(c);
@@ -142,6 +145,10 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
     }
     // Repeatedly expand the sequence with largest ASN in F
     while let Some(sequence_being_considered) = frontier.pop() { // 10-12
+        if sequence_being_considered.difficulty()!=last_difficulty {
+            last_difficulty=sequence_being_considered.difficulty();
+            log::trace!("Difficulty reduced to {}{}",last_difficulty,if last_difficulty<=bound {" OK"} else {""});
+        }
         //println!("Considering {:?}",sequence_being_considered);
         let pi = &sequence_being_considered.pi;
         if sequence_being_considered.difficulty()<=bound { // may as well just include.
@@ -175,7 +182,12 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
                                 //println!("Didn't add assertion as it was already there");
                             } else {
                                 //println!("Adding {:?} as no choice",new_sequence);
-                                if bound<new_sequence.difficulty() { bound=new_sequence.difficulty(); } // 27 LB ← max(LB, ASN (asr[ba[π′]]))
+                                if bound<new_sequence.difficulty() {
+                                    bound=new_sequence.difficulty(); // 27 LB ← max(LB, ASN (asr[ba[π′]]))
+                                }
+                                if bound==new_sequence.difficulty() {
+                                    log::trace!("Found bound {} on elimination sequence {:?}",bound,new_sequence.pi)
+                                }
                                 let suffix = new_sequence.best_ancestor();
                                 // 28 F ← F \ {π ′ ∈ F | ba[π] is a suffix of π′ }
                                 frontier.retain(|s|!s.pi.ends_with(suffix));
@@ -191,6 +203,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
         }
         //println!("frontier now includes {} elements",frontier.len())
     }
+    log::debug!("Finished generating {} assertions difficulty {}, now need to trim.",assertions.len(),bound);
     match trim_algorithm {
         TrimAlgorithm::None => {}
         TrimAlgorithm::Slow => {
@@ -203,6 +216,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
             crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever)?;
         }
     }
+    log::debug!("Trimmed assertions down to {}.",assertions.len());
     Ok(RaireResult{assertions, difficulty: bound , winner,num_candidates:votes.num_candidates() })
 }
 
