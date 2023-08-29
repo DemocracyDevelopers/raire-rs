@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
                 let time_taken = SystemTime::now().duration_since(time_start)?;
                 match & solution.solution {
                     Ok(result) => {
-                        println!("Solved in {:?} difficulty {} with {} assertions",time_taken,result.difficulty,result.assertions.len());
+                        println!("Solved {} contest {} in {:?} difficulty {} with {} assertions",entry.file_name().to_string_lossy(),contest_index+1,time_taken,result.difficulty,result.assertions.len());
                         result.verify_result_does_prove_winner()?;
                     }
                     Err(error) => {

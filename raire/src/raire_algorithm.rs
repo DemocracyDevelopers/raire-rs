@@ -70,6 +70,8 @@ struct SequenceAndEffort {
     best_assertion_for_ancestor : AssertionAndDifficulty,
     /// the best ancestor for pi will be a subset of pi, in particular the last best_ancestor_length elements of pi.
     best_ancestor_length : usize,
+    /// if not null, then a dive has already been done on the specified candidate.
+    dive_done : Option<CandidateIndex>,
 }
 
 impl SequenceAndEffort {
@@ -79,6 +81,45 @@ impl SequenceAndEffort {
     /// get the best ancestor of pi, which is a subset of pi.
     pub fn best_ancestor(&self) -> &[CandidateIndex] {
         &self.pi[(self.pi.len()-self.best_ancestor_length)..]
+    }
+
+    pub fn extend_by_candidate<A:AuditType>(&self,c:CandidateIndex,votes:&Votes,audit:&A)-> Self {
+        let mut pi_prime = vec![c];
+        pi_prime.extend_from_slice(&self.pi); // π ′ ← [c] ++π
+        let a : AssertionAndDifficulty = find_best_audit(&pi_prime, votes, audit); // a in the original paper
+        let (best_ancestor_length,best_assertion_for_ancestor) = if a.difficulty < self.difficulty() { (pi_prime.len(), a.clone()) } else { (self.best_ancestor_length, self.best_assertion_for_ancestor.clone()) };
+        SequenceAndEffort { pi:pi_prime, best_ancestor_length, best_assertion_for_ancestor, dive_done: None }
+    }
+
+    /// Called when the only use for this is to take the assertion and add it to the list of assertions.
+    /// This checks that it is not already there and removes elements from the frontier that obviously match it.
+    pub fn just_take_assertion(self,assertions:&mut Vec<AssertionAndDifficulty>,frontier:&mut BinaryHeap<SequenceAndEffort>) {
+        if assertions.iter().any(|a|a.assertion==self.best_assertion_for_ancestor.assertion) {
+            //println!("Didn't add assertion as it was already there");
+        } else {
+            //println!("Just including it");
+            let best_ancestor_pi = self.best_ancestor();
+            // 15 F ← F \ {π ′ ∈ F | ba[π] is a suffix of π ′ }
+            frontier.retain(|s|!s.pi.ends_with(best_ancestor_pi));
+            // 14 A ← A ∪ {asr[ba[π]]}
+            assertions.push(self.best_assertion_for_ancestor);
+            // step 14 is done after 15 for lifetime reasons.
+        }
+    }
+
+    /// Called when a sequence has gone as far as it can - i.e. all candidates are in the exclusion order list.
+    pub fn contains_all_candidates(self,assertions:&mut Vec<AssertionAndDifficulty>,frontier:&mut BinaryHeap<SequenceAndEffort>,bound:&mut f64) -> Result<(),RaireError> {
+        if self.difficulty().is_infinite() { // 23 if (ASN (asr[ba[π ′ ]]) = ∞):
+            //println!("Couldn't deal with {:?}",new_sequence.pi);
+            Err(RaireError::CouldNotRuleOut(self.pi)) // 24 terminate algorithm, full recount necessary
+        } else {
+            if *bound<self.difficulty() {
+                *bound=self.difficulty(); // 27 LB ← max(LB, ASN (asr[ba[π′]]))
+                log::trace!("Found bound {} on elimination sequence {:?}",*bound,self.pi)
+            }
+            self.just_take_assertion(assertions,frontier); // Steps 26 and 28 are same as 14 and 15.
+            Ok(())
+        }
     }
 }
 
@@ -120,6 +161,10 @@ fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A) -> A
     res
 }
 
+/// If true, use Michelle's diving search order optimization.
+/// Testing shows that it is almost always a moderate improvement in speed.
+const USE_DIVING : bool = true;
+
 pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
     log::debug!("Starting raire with {} candidates and {} distinct votes",votes.num_candidates(),votes.votes.len());
     let irv_result = votes.run_election();
@@ -140,61 +185,55 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
             let best_assertion_for_pi = find_best_audit(&pi,votes,audit);  // a in the original paper
             //  ba[π] ← π ⊲ Record best ancestor sequence for π
             let best_ancestor_length = pi.len();
-            frontier.push(SequenceAndEffort{pi,best_ancestor_length,best_assertion_for_ancestor:best_assertion_for_pi}); // difficulty comes from asr[π].
+            frontier.push(SequenceAndEffort{pi,best_ancestor_length,best_assertion_for_ancestor:best_assertion_for_pi, dive_done: None }); // difficulty comes from asr[π].
         }
     }
     // Repeatedly expand the sequence with largest ASN in F
-    while let Some(sequence_being_considered) = frontier.pop() { // 10-12
+    while let Some(mut sequence_being_considered) = frontier.pop() { // 10-12
         if sequence_being_considered.difficulty()!=last_difficulty {
             last_difficulty=sequence_being_considered.difficulty();
             log::trace!("Difficulty reduced to {}{}",last_difficulty,if last_difficulty<=bound {" OK"} else {""});
         }
         //println!("Considering {:?}",sequence_being_considered);
-        let pi = &sequence_being_considered.pi;
         if sequence_being_considered.difficulty()<=bound { // may as well just include.
-            if assertions.iter().any(|a|a.assertion==sequence_being_considered.best_assertion_for_ancestor.assertion) {
-                //println!("Didn't add assertion as it was already there");
-            } else {
-                //println!("Just including it");
-                let best_ancestor_pi = sequence_being_considered.best_ancestor();
-                // 15 F ← F \ {π ′ ∈ F | ba[π] is a suffix of π ′ }
-                frontier.retain(|s|!s.pi.ends_with(best_ancestor_pi));
-                // 14 A ← A ∪ {asr[ba[π]]}
-                assertions.push(sequence_being_considered.best_assertion_for_ancestor);
-                // step 14 is done after 15 for lifetime reasons.
-            }
+            sequence_being_considered.just_take_assertion(&mut assertions,&mut frontier);
         } else {
-            // TODO implement diving.
+            if USE_DIVING && !sequence_being_considered.dive_done.is_some() {
+                let mut last : Option<SequenceAndEffort> = None;
+                assert_eq!(irv_result.elimination_order.len(),votes.num_candidates() as usize);
+                for &c in irv_result.elimination_order.iter().rev() {
+                    if !sequence_being_considered.pi.contains(&c) {
+                        let new_sequence = match last.take() { // don't repeat work! Mark that this path has already been dealt with.
+                            Some(mut l) => {
+                                l.dive_done=Some(c);
+                                let new_sequence = l.extend_by_candidate(c,votes,audit);
+                                frontier.push(l);
+                                new_sequence
+                            }
+                            None => {
+                                sequence_being_considered.dive_done=Some(c);
+                                sequence_being_considered.extend_by_candidate(c,votes,audit)
+                            },
+                        };
+                        if new_sequence.difficulty()<=bound {
+                            new_sequence.just_take_assertion(&mut assertions,&mut frontier);
+                            break;
+                        } else {
+                            last = Some(new_sequence);
+                        }
+                    }
+                }
+                if let Some(last) = last {
+                    assert_eq!(last.pi.len(),votes.num_candidates() as usize);
+                    last.contains_all_candidates(&mut assertions,&mut frontier,&mut bound)?;
+                }
+            }
             for c in 0..votes.num_candidates() { // for each(c ∈ C \ π):
                 let c = CandidateIndex(c);
-                if !sequence_being_considered.pi.contains(&c) {
-                    let mut pi_prime = vec![c];
-                    pi_prime.extend_from_slice(pi); // π ′ ← [c] ++π
-                    let a : AssertionAndDifficulty = find_best_audit(&pi_prime, votes, audit); // a in the original paper
-                    let (best_ancestor_length,best_assertion_for_ancestor) = if a.difficulty < sequence_being_considered.difficulty() { (pi_prime.len(), a.clone()) } else { (sequence_being_considered.best_ancestor_length, sequence_being_considered.best_assertion_for_ancestor.clone()) };
-                    let new_sequence = SequenceAndEffort { pi:pi_prime, best_ancestor_length, best_assertion_for_ancestor };
+                if !(sequence_being_considered.pi.contains(&c)||sequence_being_considered.dive_done==Some(c)) {
+                    let new_sequence = sequence_being_considered.extend_by_candidate(c,votes,audit);
                     if new_sequence.pi.len()==votes.num_candidates() as usize { // 22 if (|π′| = |C|):
-                        if new_sequence.difficulty().is_infinite() { // 23 if (ASN (asr[ba[π ′ ]]) = ∞):
-                            //println!("Couldn't deal with {:?}",new_sequence.pi);
-                            return Err(RaireError::CouldNotRuleOut(new_sequence.pi)); // 24 terminate algorithm, full recount necessary
-                        } else {
-                            if assertions.iter().any(|a|a.assertion==new_sequence.best_assertion_for_ancestor.assertion) {
-                                //println!("Didn't add assertion as it was already there");
-                            } else {
-                                //println!("Adding {:?} as no choice",new_sequence);
-                                if bound<new_sequence.difficulty() {
-                                    bound=new_sequence.difficulty(); // 27 LB ← max(LB, ASN (asr[ba[π′]]))
-                                }
-                                if bound==new_sequence.difficulty() {
-                                    log::trace!("Found bound {} on elimination sequence {:?}",bound,new_sequence.pi)
-                                }
-                                let suffix = new_sequence.best_ancestor();
-                                // 28 F ← F \ {π ′ ∈ F | ba[π] is a suffix of π′ }
-                                frontier.retain(|s|!s.pi.ends_with(suffix));
-                                assertions.push(new_sequence.best_assertion_for_ancestor); // 26 A ← A ∪ {asr[ba[π′]]}
-                                // 26 is done after 28 for lifetime reasons.
-                            }
-                        }
+                        new_sequence.contains_all_candidates(&mut assertions,&mut frontier,&mut bound)?;
                     } else {
                         frontier.push(new_sequence) // 31 F ← F ∪ {π ′ }
                     }
