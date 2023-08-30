@@ -13,7 +13,7 @@
 
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use crate::assertions::{all_elimination_orders, Assertion, AssertionAndDifficulty, NotEliminatedNext, NotEliminatedBefore, EliminationOrder, EliminationOrderSuffix, EffectOfAssertionOnEliminationOrderSuffix};
+use crate::assertions::{all_elimination_orders, Assertion, AssertionAndDifficulty, NotEliminatedNext, NotEliminatedBefore, EliminationOrder, EliminationOrderSuffix, EffectOfAssertionOnEliminationOrderSuffix, NotEliminatedBeforeCache};
 use crate::audit_type::{AssertionDifficulty, AuditType};
 use crate::irv::{CandidateIndex, Votes};
 use serde::Deserialize;
@@ -83,10 +83,10 @@ impl SequenceAndEffort {
         &self.pi[(self.pi.len()-self.best_ancestor_length)..]
     }
 
-    pub fn extend_by_candidate<A:AuditType>(&self,c:CandidateIndex,votes:&Votes,audit:&A)-> Self {
+    pub fn extend_by_candidate<A:AuditType>(&self,c:CandidateIndex,votes:&Votes,audit:&A,neb_cache:&NotEliminatedBeforeCache)-> Self {
         let mut pi_prime = vec![c];
         pi_prime.extend_from_slice(&self.pi); // π ′ ← [c] ++π
-        let a : AssertionAndDifficulty = find_best_audit(&pi_prime, votes, audit); // a in the original paper
+        let a : AssertionAndDifficulty = find_best_audit(&pi_prime, votes, audit,neb_cache); // a in the original paper
         let (best_ancestor_length,best_assertion_for_ancestor) = if a.difficulty < self.difficulty() { (pi_prime.len(), a.clone()) } else { (self.best_ancestor_length, self.best_assertion_for_ancestor.clone()) };
         SequenceAndEffort { pi:pi_prime, best_ancestor_length, best_assertion_for_ancestor, dive_done: None }
     }
@@ -145,11 +145,11 @@ impl Ord for SequenceAndEffort {
     }
 }
 
-fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A) -> AssertionAndDifficulty {
+fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A,neb_cache:&NotEliminatedBeforeCache) -> AssertionAndDifficulty {
     let c = pi[0];
     let mut res : AssertionAndDifficulty = AssertionAndDifficulty { assertion: Assertion::NEB(NotEliminatedBefore { winner: c, loser: c }), difficulty: f64::INFINITY }; // dummy infinitely bad assertion
     // consider WO contests
-    if let Some(assertion) = NotEliminatedBefore::find_best_assertion(c, &pi[1..], votes, audit) {
+    if let Some(assertion) = NotEliminatedBefore::find_best_assertion_using_cache(c, &pi[1..],votes, neb_cache) {
         if assertion.difficulty < res.difficulty { res=assertion; }
     }
     // consider IRV(c,c′,{c′′ | c′′ ∈ π}): Assertion that c beats some c′ != c ∈ π
@@ -171,6 +171,8 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
     if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
     if irv_result.possible_winners.len()!=1 { return Err(RaireError::TiedWinners(irv_result.possible_winners))}
     log::debug!("IRV winner {} elimination order {:?}",winner,irv_result.elimination_order);
+    let neb_cache = NotEliminatedBeforeCache::new(votes,audit);
+    log::trace!("Created NEB cache");
     //println!("Calling raire with {} votes {} candidates winner {}",votes.total_votes(),votes.num_candidates(),winner);
     let mut assertions : Vec<AssertionAndDifficulty> = vec![]; // A in the original paper
     let mut bound : AssertionDifficulty = 0.0; // LB in the original paper
@@ -182,7 +184,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
         if c!=winner { // 4 for each(c ∈ C \ {c w }):
             let pi = vec![c];
             //  asr[π] ← a ⊲ Record best assertion for π
-            let best_assertion_for_pi = find_best_audit(&pi,votes,audit);  // a in the original paper
+            let best_assertion_for_pi = find_best_audit(&pi,votes,audit,&neb_cache);  // a in the original paper
             //  ba[π] ← π ⊲ Record best ancestor sequence for π
             let best_ancestor_length = pi.len();
             frontier.push(SequenceAndEffort{pi,best_ancestor_length,best_assertion_for_ancestor:best_assertion_for_pi, dive_done: None }); // difficulty comes from asr[π].
@@ -206,13 +208,13 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
                         let new_sequence = match last.take() { // don't repeat work! Mark that this path has already been dealt with.
                             Some(mut l) => {
                                 l.dive_done=Some(c);
-                                let new_sequence = l.extend_by_candidate(c,votes,audit);
+                                let new_sequence = l.extend_by_candidate(c,votes,audit,&neb_cache);
                                 frontier.push(l);
                                 new_sequence
                             }
                             None => {
                                 sequence_being_considered.dive_done=Some(c);
-                                sequence_being_considered.extend_by_candidate(c,votes,audit)
+                                sequence_being_considered.extend_by_candidate(c,votes,audit,&neb_cache)
                             },
                         };
                         if new_sequence.difficulty()<=bound {
@@ -231,7 +233,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algor
             for c in 0..votes.num_candidates() { // for each(c ∈ C \ π):
                 let c = CandidateIndex(c);
                 if !(sequence_being_considered.pi.contains(&c)||sequence_being_considered.dive_done==Some(c)) {
-                    let new_sequence = sequence_being_considered.extend_by_candidate(c,votes,audit);
+                    let new_sequence = sequence_being_considered.extend_by_candidate(c,votes,audit,&neb_cache);
                     if new_sequence.pi.len()==votes.num_candidates() as usize { // 22 if (|π′| = |C|):
                         new_sequence.contains_all_candidates(&mut assertions,&mut frontier,&mut bound)?;
                     } else {

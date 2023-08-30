@@ -62,10 +62,58 @@ impl NotEliminatedBefore {
         } else {None}
     }
 
+    pub fn find_best_assertion_using_cache(c:CandidateIndex, later_in_pi:&[CandidateIndex],votes:&Votes,cache:&NotEliminatedBeforeCache) -> Option<AssertionAndDifficulty> {
+        let mut best_asn = f64::MAX;
+        let mut best_assertion : Option<NotEliminatedBefore> = None;
+        for alt_c in 0..votes.num_candidates() {
+            let alt_c = CandidateIndex(alt_c);
+            if alt_c!=c {
+                let contest = if later_in_pi.contains(&alt_c) {
+                    // consider WO(c,c′): Assertion that c beats c′ ∈ π, where c′ != c appears later in π
+                    NotEliminatedBefore {winner:c,loser:alt_c}
+                } else {
+                    // consider WO(c′′,c): Assertion that c′′ ∈ C\π beats c in a winner-only audit with winner c′′ and loser c
+                    NotEliminatedBefore {winner:alt_c,loser:c}
+                };
+                let asn = cache.difficulty(contest);
+                if asn<best_asn {
+                    best_asn=asn;
+                    best_assertion=Some(contest);
+                }
+            }
+        }
+        if let Some(assertion) = best_assertion {
+            Some(AssertionAndDifficulty { assertion:Assertion::NEB(assertion), difficulty:best_asn })
+        } else {None}
+    }
+
     /// see if the assertion doesn't rule out the given elimination order suffix.
     pub fn ok_elimination_order_suffix(&self,elimination_order_suffix:&[CandidateIndex]) -> EffectOfAssertionOnEliminationOrderSuffix {
         // the winner cannot be excluded before the loser.
         check_winner_eliminated_after_loser(elimination_order_suffix,self.winner,self.loser)
+    }
+}
+
+/// Pre-compute all NEB entries to prevent duplicate computations.
+pub struct NotEliminatedBeforeCache {
+    pub cache : Vec<Vec<AssertionDifficulty>>
+}
+
+impl NotEliminatedBeforeCache {
+    /// Get the cached difficulty for given winner and loser.
+    pub fn difficulty(&self,entry:NotEliminatedBefore) -> AssertionDifficulty {
+        self.cache[entry.winner.0 as usize][entry.loser.0 as usize]
+    }
+    pub fn new<A:AuditType>(votes:&Votes, audit:&A) -> Self {
+        let mut cache = vec![];
+        for winner in 0..votes.num_candidates() {
+            let mut row = vec![];
+            for loser in 0..votes.num_candidates() {
+                row.push(if winner==loser { f64::INFINITY } else { NotEliminatedBefore{winner:CandidateIndex(winner),loser:CandidateIndex(loser)}.difficulty(votes,audit)} );
+            }
+            cache.push(row);
+        }
+        NotEliminatedBeforeCache{cache}
     }
 }
 
@@ -153,7 +201,7 @@ impl NotEliminatedNext {
         if let Some(loser) = best_loser {
             let difficulty = audit.difficulty(tally_winner, tally_loser, tallies.iter().cloned().sum());
             let mut continuing = continuing.to_vec();
-            continuing.sort_unstable_by_key(|c|c.0); // important to make it canonical so that equality checks of assertions work, and so is_contining can use a binary search. Also sorted is easier to read.
+            continuing.sort_unstable_by_key(|c|c.0); // important to make it canonical so that equality checks of assertions work, and so is_continuing can use a binary search. Also sorted is easier to read.
             let assertion = NotEliminatedNext { winner, loser, continuing };
             Some(AssertionAndDifficulty { assertion:Assertion::NEN(assertion), difficulty })
         } else {None}
