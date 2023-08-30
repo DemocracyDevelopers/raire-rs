@@ -131,11 +131,36 @@ function all_elimination_order_suffixes(num_candidates)  {
  * @return {string} a text description of the assertion
  */
 function assertion_description(assertion,candidate_names) {
-    const basic = candidate_names[assertion.winner]+" beats "+candidate_names[assertion.loser]+" always";
+    const basic = candidate_names[assertion.winner]+" beats "+candidate_names[assertion.loser];
     if (assertion.type==="NEB") {
-        return basic;
+        return basic+" always";
     } else {
         return basic+" if only {"+assertion.continuing.map(i=>candidate_names[i]).join(",")+"} remain";
+    }
+}
+
+/**
+ * Like assertion_description but add SVG pictures of triangles for winner and loser symbols.
+ * @param {Element} where where to insert the text.
+ * @param {{winner:number,loser:number,continuing:number[],type:string}} assertion The assertion.
+ * @param {string[]} candidate_names : a list of the candidate names
+ * @return {string} a text description of the assertion
+ */
+function assertion_description_with_triangles(where,assertion,candidate_names) {
+    where.append(candidate_names[assertion.winner]);
+    let svg1 = addSVG(where,"svg");
+    svg1.setAttribute("width",20);
+    svg1.setAttribute("height",20);
+    drawWinnerOrLoserSymbol(svg1,10,10,"winner",10);
+    where.append(" beats "+candidate_names[assertion.loser]);
+    let svg2 = addSVG(where,"svg");
+    svg2.setAttribute("width",20);
+    svg2.setAttribute("height",20);
+    drawWinnerOrLoserSymbol(svg2,10,10,"loser",10);
+    if (assertion.type==="NEB") {
+        where.append(" always");
+    } else {
+        where.append(" if only {"+assertion.continuing.map(i=>candidate_names[i]).join(",")+"} remain");
     }
 }
 
@@ -313,6 +338,22 @@ function draw_trees_as_text(div,elimination_orders,candidate_names,assertion) {
 }
 
 /**
+ * Draw a triangle that is either pointing up or down.
+ * @param {Element} where Where the triangle should be inserted
+ * @param {number} cx x position of center
+ * @param {number} cy y position of center
+ * @param {"winner"|"loser"} candidateClass
+ * @param {number} node_radius Roughly the radius of the triangle.
+ */
+function drawWinnerOrLoserSymbol(where,cx,cy,candidateClass,node_radius) {
+    const direction = candidateClass==="winner"?-1:1;
+    let top_y = cy+direction*node_radius;
+    let triangle_half_width = node_radius;
+    let bottom_y = cy-direction*node_radius;
+    addSVG(where,"polygon",candidateClass).setAttribute("points",""+cx+","+top_y+" "+(cx-triangle_half_width)+","+bottom_y+" "+(cx+triangle_half_width)+","+bottom_y);
+}
+
+/**
  * Draw a single tree as an SVG node.
  * @param {Element} div The DOM element where things should be inserted
  * @param {EliminationTreeNode} tree
@@ -337,22 +378,31 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
     function drawTree(node,nodes_above_me) {
         let cx = (node.start_x+node.width/2.0)*pixels_per_node_x;
         let cy = (nodes_above_me===0?0.6:(0.5+nodes_above_me))*pixels_per_node_y;
-        let nodeC = addSVG(nodes,nodes_above_me===0?"rect":"circle",candidate_class(node.body,assertion));
-        let name = addSVG(names,"text",candidate_class(node.body,assertion)+" "+(nodes_above_me===0?"above":"left"));
+        const candidateClass = candidate_class(node.body,assertion);
+        const isWinnerOrLoser = candidateClass==="winner" || candidateClass==="loser";
+        let name = addSVG(names,"text",candidateClass+" "+(nodes_above_me===0?"above":"left"));
         name.textContent=candidate_names[node.body];
-        if (nodes_above_me===0) { // draw square, name above
-            nodeC.setAttribute("x",cx-node_radius);
-            nodeC.setAttribute("y",cy-node_radius);
-            nodeC.setAttribute("width",2*node_radius);
-            nodeC.setAttribute("height",2*node_radius);
+        if (nodes_above_me===0) { // draw (probably) square, name above
             name.setAttribute("x",cx);
             name.setAttribute("y",cy-2*node_radius);
-        } else { // draw circle, name to left
-            nodeC.setAttribute("cx",cx);
-            nodeC.setAttribute("cy",cy);
-            nodeC.setAttribute("r",node_radius);
+        } else { // draw (probably) circle, name to left
             name.setAttribute("x",cx-2*node_radius);
             name.setAttribute("y",cy);
+        }
+        if (isWinnerOrLoser) { // draw triangle
+            drawWinnerOrLoserSymbol(nodes,cx,cy,candidateClass,node_radius*1.6);
+        } else {
+            let nodeC = addSVG(nodes,nodes_above_me===0?"rect":"circle",candidateClass);
+            if (nodes_above_me===0) { // draw square, name above
+                nodeC.setAttribute("x",cx-node_radius);
+                nodeC.setAttribute("y",cy-node_radius);
+                nodeC.setAttribute("width",2*node_radius);
+                nodeC.setAttribute("height",2*node_radius);
+            } else { // draw circle, name to left
+                nodeC.setAttribute("cx",cx);
+                nodeC.setAttribute("cy",cy);
+                nodeC.setAttribute("r",node_radius);
+            }
         }
         function drawLineTo(x,y,valid) { // draw a line from this element to a location
             let line = addSVG(lines,"line",valid?"valid":"invalid");
@@ -475,7 +525,9 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
         add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
         draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
         for (const assertion of assertions) {
-            add(div,"h4","assertion_name").innerText="Assertion : "+assertion_description(assertion,candidate_names);
+            const assertionHeading = add(div,"h4","assertion_name");
+            assertionHeading.append("Assertion : ");
+            assertion_description_with_triangles(assertionHeading,assertion,candidate_names);
             elimination_orders = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,true);
             const elimination_orders_after = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,false);
             add(div,"h5","explanation_text").innerText="Evaluate assertion, expanding paths if necessary";

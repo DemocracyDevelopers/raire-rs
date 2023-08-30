@@ -32,12 +32,12 @@ span.eliminated {
     color: grey;
 }
 
-rect.winner, circle.winner {
+rect.winner, circle.winner, polygon.winner {
     stroke: none;
     fill: green;
 }
 
-rect.loser, circle.loser {
+rect.loser, circle.loser, polygon.loser {
     stroke: none;
     fill: red;
 }
