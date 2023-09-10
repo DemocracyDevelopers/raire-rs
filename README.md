@@ -61,7 +61,7 @@ See examples in [WebContent/example_assertions](WebContent/example_assertions) f
 Here is a simple example for a contest with four candidates, Alice, Bob, Chuan and Diego. The winner was Chuan. There were 13500 ballots
 of which there were 5000 putting Chuan first, then Bob, then Alice. There were 1000 listing Bob, then Chuan, then Diego. 
 There were 1500 listing Diego then Alice. There were 4000 listing Alice then Diego, and 2000 listing just Diego. The audit
-type is "Margin" with a total number of auditable ballots of 13500.
+type is "OneOnMargin" with a total number of auditable ballots of 13500.
 ```text
 {
   "metadata": {
@@ -77,35 +77,34 @@ type is "Margin" with a total number of auditable ballots of 13500.
     { "n": 2000, "prefs": [ 3 ]  }
   ],
   "winner": 2,
-  "audit": { "type": "Margin", "total_auditable_ballots": 13500  }
+  "audit": { "type": "OneOnMargin", "total_auditable_ballots": 13500  }
 }
 ```
 
 The input is JSON, with a single object containing the following fields:
-* metadata : An arbitrary JSON object. The following sub-fields are used in some of the associated tools: 
-  * candidates : An array of candidate names (one string for each candidate). The length of this array should match the *num_candidates* field.
-  * contest : If present, the name of the contest (a string)
-* num_candidates : An integer specifying how many candidates there are in the contest
-* votes : An array of objects. Each object contains two fields:
-  * n : The number of votes with this specific preference list
-  * prefs : An array of integers between 0 and _num_candidates_-1, being indices of candidates in the preference list, with the most preferred candidate the first entry in the array.
-* winner : Optionally, an integer between 0 and _num_candidates_-1, being the index of the candidate who is the winner. This will be checked against the votes as a consistency check.
+* `metadata` : An arbitrary JSON object. The following sub-fields are used in some of the associated tools: 
+  * `candidates` : An array of candidate names (one string for each candidate). The length of this array should match the *num_candidates* field.
+  * `contest` : If present, the name of the contest (a string)
+* `num_candidates` : An integer specifying how many candidates there are in the contest
+* `votes` : An array of objects. Each object contains two fields:
+  * `n` : The number of votes with this specific preference list
+  * `prefs` : An array of integers between 0 and _num_candidates_-1, being indices of candidates in the preference list, with the most preferred candidate the first entry in the array.
+* `winner` : Optionally, an integer between 0 and _num_candidates_-1, being the index of the candidate who is the winner. This will be checked against the votes as a consistency check.
   The only use for this is consistency checking - the RAIRE algorithm will recount the election anyway and check the winner. This is to prevent the audit checking that the digitally recorded
   votes do give the same winner as the paper ballots, but failing to notice that that is not the announced winner.
-* audit : The type of the audit, and the number of auditable ballots for computing the diluted margin, which may be larger than the number of formal votes for a variety of logistic reasons. Audit type may be:
-  * BRAVO,
-  * MACRO,
-  * Margin
-  * MarginSq
-  
+* `audit` : The type of the audit, and the number of auditable ballots for computing the diluted margin, which may be larger than the number of formal votes for a variety of logistic reasons. Audit type may be:
+  * `BRAVO` : other parameter `"total_auditable_ballots"` and `"confidence"`,
+  * `MACRO` : other parameters `"total_auditable_ballots"`, `"confidence"` and `error_inflation_factor` (a.k.a. γ),
+  * `OneOnMargin` : other parameter `"total_auditable_ballots"`,
+  * `OneOnMarginSq` : other parameter `"total_auditable_ballots"`
   These have various relevant parameters - see [the code](raire/src/audit_type.rs) for details. For example, for a generic ballot-level comparison audit, the appropriate type is
-    `"audit": { "type": "Margin", "total_auditable_ballots": 42 }`
+    `"audit": { "type": "OneOnMargin", "total_auditable_ballots": 42 }`
   where '42' is replaced by the appropriate number of ballots.
-* trim_algorithm: Optionally one of the following strings : "None", "MinimizeTree" (default if left blank), or "MinimizeAssertions". The RAIRE algorithm may produce redundant assertions; there is a post-processing
+* `trim_algorithm`: Optionally one of the following strings : `None`, `MinimizeTree` (default if left blank), or `MinimizeAssertions`. The RAIRE algorithm may produce redundant assertions; there is a post-processing
   step that will trim redundant assertions. It will not change the difficulty score of the audit, but may reduce the number of assertions that need to be tested.
-  * "None" does no such post-processing. 
-  * "MinimizeTree" does minimal post-processing designed to minimize the total size of the tree showing all possible elimination orders until they are ruled out by an assertion. This is almost always quite fast, and a safe option which probably minimizes human effort to verify the output.
-  * "MinimizeAssertions" does more complex post-processing that can eliminate more redundant assertions, at the expense of a possibly larger tree of possible elimination audits. This is often fast, but can sometimes take significantly longer than the main RAIRE algorithm.
+  * `"None"` does no such post-processing. 
+  * `"MinimizeTree"` does minimal post-processing designed to minimize the total size of the tree showing all possible elimination orders until they are ruled out by an assertion. This is almost always quite fast, and a safe option which probably minimizes human effort to verify the output.
+  * `"MinimizeAssertions"` does more complex post-processing that can eliminate more redundant assertions, at the expense of a possibly larger tree of possible elimination audits. This is often fast, but can sometimes take significantly longer than the main RAIRE algorithm.
 
 # JSON output format
 

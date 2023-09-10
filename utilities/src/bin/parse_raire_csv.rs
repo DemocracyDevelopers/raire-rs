@@ -56,8 +56,8 @@ fn main() -> anyhow::Result<()> {
         println!("{num_ballots} ballots of which {} are unique",contest.votes.len());
         let total_auditable_ballots = BallotPaperCount(args.total_ballots.unwrap_or(num_ballots));
         let audit : Audit = match (args.ballot_polling,args.confidence) {
-            (false,None) => Audit::Margin(BallotComparisonOneOnDilutedMargin{ total_auditable_ballots }),
-            (true,None) => Audit::MarginSq(BallotPollingOneOnDilutedMarginSquared{ total_auditable_ballots }),
+            (false,None) => Audit::OneOnMargin(BallotComparisonOneOnDilutedMargin{ total_auditable_ballots }),
+            (true,None) => Audit::OneOnMarginSq(BallotPollingOneOnDilutedMarginSquared{ total_auditable_ballots }),
             (false,Some(confidence)) => Audit::MACRO(BallotComparisonMACRO{total_auditable_ballots,confidence,error_inflation_factor:args.error_inflation_factor.unwrap_or(1.0)}),
             (true,Some(confidence)) => Audit::BRAVO(BallotPollingBRAVO{total_auditable_ballots,confidence}),
         };

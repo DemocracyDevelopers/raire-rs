@@ -11,5 +11,5 @@
     { "n": 45, "prefs": [ 2, 3 ] }
   ],
   "winner": 2,
-  "audit": { "type": "Margin", "total_auditable_ballots": 225  }
+  "audit": { "type": "OneOnMargin", "total_auditable_ballots": 225  }
 }

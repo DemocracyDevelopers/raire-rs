@@ -149,8 +149,10 @@ impl AuditType for BallotPollingOneOnDilutedMarginSquared {
 pub enum Audit {
     BRAVO(BallotPollingBRAVO),
     MACRO(BallotComparisonMACRO),
-    Margin(BallotComparisonOneOnDilutedMargin),
-    MarginSq(BallotPollingOneOnDilutedMarginSquared),
+    #[serde(alias = "Margin")] // for backwards compatibility
+    OneOnMargin(BallotComparisonOneOnDilutedMargin),
+    #[serde(alias = "MarginSq")] // for backwards compatibility
+    OneOnMarginSq(BallotPollingOneOnDilutedMarginSquared),
 }
 
 impl AuditType for Audit {
@@ -158,8 +160,8 @@ impl AuditType for Audit {
         match self {
             Audit::BRAVO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
             Audit::MACRO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
-            Audit::Margin(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
-            Audit::MarginSq(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
+            Audit::OneOnMargin(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser, active_paper_count),
+            Audit::OneOnMarginSq(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser, active_paper_count),
         }
     }
 }

@@ -96,7 +96,7 @@ fn test_raire() {
         num_candidates : 4,
         votes : get_votes().votes,
         winner : Some(CandidateIndex(2)),
-        audit : Audit::Margin(AUDIT)
+        audit : Audit::OneOnMargin(AUDIT)
     };
     println!("{}",serde_json::to_string_pretty(&problem).unwrap());
     let solution = problem.solve();
