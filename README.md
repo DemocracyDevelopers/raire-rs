@@ -146,7 +146,7 @@ Some of these currently fail. See the important note at the top of this file.
 
 # Running original RAIRE examples and interpreting the answers.
 
-There is a program produced, `parse_raire_csv` that reads the original files and
+There is a program produced, `parse_raire_csv` that reads the original example files in [https://github.com/michelleblom/audit-irv-cp/tree/raire-branch](https://github.com/michelleblom/audit-irv-cp/tree/raire-branch) and
 produces a RAIRE JSON format. Run `./target/release/parse_raire_csv --help` for
 all options.
 
@@ -160,6 +160,17 @@ Example:
 ./target/release/raire SFDA_2019_Nov8Partial.json 
 ./target/release/describe SFDA_2019_Nov8Partial_out.json
 ```
+
+# Importing from ConcreteSTV or Preflib formats
+
+[ConcreteSTV](https://github.com/AndrewConway/ConcreteSTV) has a format for STV data. IRV data can be considered a subset of STV, 
+and _ConcreteSTV_ files can be converted to _raire-rs_ files using [ConcreteSTVToRaire](https://github.com/AndrewConway/ConcreteSTVToRaire).
+
+ConcreteSTV files can be obtained
+* By downloading from [vote.andrewconway.org](https://vote.andrewconway.org) 
+* Using ConcreteSTV to load files from various electoral commissions
+* Using ConcreteSTV to convert [Preflib](https://www.preflib.org/) `.soi` or `.soc` files to ConcreteSTV format.
+
 
 ## Copyright
 
