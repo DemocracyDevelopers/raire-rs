@@ -108,7 +108,23 @@ The input is JSON, with a single object containing the following fields:
 
 # JSON output format
 
-TBD
+The output is JSON with two fields:
+* `metadata` : a copy of the input metadata
+* `solution` : An object with exactly one of the two following fields
+  * `Err` : If some error occurred. Complete list of possibilities in [enum RaireError](raire/src/lib.rs)
+  * `Ok` : If no error occurred. Value is a structure with the following fields:
+    * `assertions` : an array of assertions. Each of these is an object with the following fields
+      * `assertion` : on object containing fields
+        * `type` : either the string `NEN` or `NEB` specifying what type of assertion it is.
+          * `NEB` (Not Eliminated Before) means that the `winner` always beats the `loser`.
+          * `NEN` (Not Eliminated Next) means that the `winner` beats the `loser` at the point where exactly the `continuing` candidates are remaining. In particular, it means that the `winner` is not eliminated at that exact point. 
+        * `winner` : A candidate index
+        * `loser` : A candidate index.
+        * `continuing` : Only present if `type` is `NEN`. An array of candidate indices.
+      * `difficulty` : a number indicating the difficulty of the assertion.
+    * `difficulty` : a number indicating the difficulty of the audit. This is the maximum of the difficulties in the assertions array. 
+    * `winner` : The index of the candidate who won - an integer between `0` and `num_candidates-1`. 
+    * `num_candidates` : The number of candidates (an integer).
 
 # What if I don't trust it?
 
@@ -118,7 +134,7 @@ The computation RAIRE performs is difficult for a human to repeat, but fortunate
 it is much more reasonable for a human to verify that the assertions it suggests 
 are indeed sufficient to imply that a particular candidate was the true winner.
 
-See [TBD] for details.
+See [A guide to Raire](TODO) for details.
 
 # Internal tests
 
