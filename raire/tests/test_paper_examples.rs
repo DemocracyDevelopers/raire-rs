@@ -14,7 +14,7 @@
 use raire::assertions::{NotEliminatedNext, SpecificLoserAmongstContinuing, NotEliminatedBefore};
 use raire::audit_type::{BallotComparisonMACRO, BallotPollingBRAVO, BallotPollingBRAVOUsingActivePaperCount};
 use raire::irv::{BallotPaperCount, CandidateIndex, Vote, Votes};
-use raire::raire_algorithm::raire;
+use raire::raire_algorithm::{raire, TrimAlgorithm};
 
 /// Get the votes in table 1.
 fn get_votes() -> Votes {
@@ -305,7 +305,7 @@ fn test_example12_asns() {
 fn test_example12_raire_bravo() {
     let votes = get_votes_for_example12();
     assert_eq!(BRAVO_EG12.total_auditable_ballots, votes.total_votes());
-    let res = raire(&votes,CandidateIndex(0),&BRAVO_EG12).unwrap();
+    let res = raire(&votes,Some(CandidateIndex(0)),&BRAVO_EG12,TrimAlgorithm::None).unwrap();
     println!("{:?}",res);
     assert!((res.difficulty -278.25).abs()<0.01);
     let elimination_orders = res.possible_elimination_orders_allowed_by_assertions(votes.num_candidates());
@@ -329,7 +329,7 @@ fn test_example12_raire_bravo() {
 fn test_example12_raire_macro() {
     let votes = get_votes_for_example12();
     assert_eq!(MACRO_EG12.total_auditable_ballots, votes.total_votes());
-    let res = raire(&votes,CandidateIndex(0),&MACRO_EG12).unwrap();
+    let res = raire(&votes,Some(CandidateIndex(0)),&MACRO_EG12,TrimAlgorithm::None).unwrap();
     println!("{:?}",res);
     assert!((res.difficulty -44.49).abs()<0.01);
     let elimination_orders = res.possible_elimination_orders_allowed_by_assertions(votes.num_candidates());

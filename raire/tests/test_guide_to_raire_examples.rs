@@ -95,7 +95,7 @@ fn test_raire() {
         }),
         num_candidates : 4,
         votes : get_votes().votes,
-        winner : CandidateIndex(2),
+        winner : Some(CandidateIndex(2)),
         audit : Audit::Margin(AUDIT)
     };
     println!("{}",serde_json::to_string_pretty(&problem).unwrap());

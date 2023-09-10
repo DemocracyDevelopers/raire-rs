@@ -81,7 +81,7 @@ impl Contest {
             metadata,
             num_candidates: self.num_candidates,
             votes: votes.votes,
-            winner,
+            winner: Some(winner),
             audit,
             trim_algorithm: None,
             difficulty_estimate: None,

@@ -89,7 +89,9 @@ The input is JSON, with a single object containing the following fields:
 * votes : An array of objects. Each object contains two fields:
   * n : The number of votes with this specific preference list
   * prefs : An array of integers between 0 and _num_candidates_-1, being indices of candidates in the preference list, with the most preferred candidate the first entry in the array.
-* winner : An integer between 0 and _num_candidates_-1, being the index of the candidate who is the winner. This will be checked against the votes as a consistency check.
+* winner : Optionally, an integer between 0 and _num_candidates_-1, being the index of the candidate who is the winner. This will be checked against the votes as a consistency check.
+  The only use for this is consistency checking - the RAIRE algorithm will recount the election anyway and check the winner. This is to prevent the audit checking that the digitally recorded
+  votes do give the same winner as the paper ballots, but failing to notice that that is not the announced winner.
 * audit : The type of the audit, and the number of auditable ballots for computing the diluted margin, which may be larger than the number of formal votes for a variety of logistic reasons. Audit type may be:
   * BRAVO,
   * MACRO,

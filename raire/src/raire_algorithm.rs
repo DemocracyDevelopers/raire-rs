@@ -165,11 +165,14 @@ fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A,neb_c
 /// Testing shows that it is almost always a moderate improvement in speed.
 const USE_DIVING : bool = true;
 
-pub fn raire<A:AuditType>(votes:&Votes,winner:CandidateIndex,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
+pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
     log::debug!("Starting raire with {} candidates and {} distinct votes",votes.num_candidates(),votes.votes.len());
     let irv_result = votes.run_election();
-    if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
+    if let Some(winner) = winner {
+        if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
+    }
     if irv_result.possible_winners.len()!=1 { return Err(RaireError::TiedWinners(irv_result.possible_winners))}
+    let winner : CandidateIndex = irv_result.possible_winners[0]; // replace option by actual value.
     log::debug!("IRV winner {} elimination order {:?}",winner,irv_result.elimination_order);
     let neb_cache = NotEliminatedBeforeCache::new(votes,audit);
     log::trace!("Created NEB cache");

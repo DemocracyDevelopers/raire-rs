@@ -49,7 +49,11 @@ pub struct RaireProblem {
     pub metadata : serde_json::Value,
     pub num_candidates : usize,
     pub votes : Vec<Vote>,
-    pub winner : CandidateIndex,
+    /// Not strictly necessary, only used for consistency checking with the announced winner.
+    /// But I recommend it.
+    /// We don't want to announce the wrong winner, and then for the audit to prove the winner is the correct person, and no one notice that that was not the person announced.
+    #[serde(default,skip_serializing_if = "Option::is_none")]
+    pub winner : Option<CandidateIndex>,
     pub audit : Audit,
     /// the algorithm used to trim.
     #[serde(default,skip_serializing_if = "Option::is_none")]
