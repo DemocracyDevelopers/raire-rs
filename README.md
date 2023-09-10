@@ -90,7 +90,15 @@ The input is JSON, with a single object containing the following fields:
   * n : The number of votes with this specific preference list
   * prefs : An array of integers between 0 and _num_candidates_-1, being indices of candidates in the preference list, with the most preferred candidate the first entry in the array.
 * winner : An integer between 0 and _num_candidates_-1, being the index of the candidate who is the winner. This will be checked against the votes as a consistency check.
-* audit : The type of the audit, and the number of auditable ballots for computing the diluted margin. This may be larger than the number of formal votes for a variety of logistic reasons.
+* audit : The type of the audit, and the number of auditable ballots for computing the diluted margin, which may be larger than the number of formal votes for a variety of logistic reasons. Audit type may be:
+  * BRAVO,
+  * MACRO,
+  * Margin
+  * MarginSq
+  
+  These have various relevant parameters - see [the code](raire/src/audit_type.rs) for details. For example, for a generic ballot-level comparison audit, the appropriate type is
+    `"audit": { "type": "Margin", "total_auditable_ballots": 42 }`
+  where '42' is replaced by the appropriate number of ballots.
 * trim_algorithm: Optionally one of the following strings : "None", "MinimizeTree" (default if left blank), or "MinimizeAssertions". The RAIRE algorithm may produce redundant assertions; there is a post-processing
   step that will trim redundant assertions. It will not change the difficulty score of the audit, but may reduce the number of assertions that need to be tested.
   * "None" does no such post-processing. 
