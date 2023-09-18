@@ -125,7 +125,9 @@ The output is JSON with two fields:
         * `loser` : A candidate index.
         * `continuing` : Only present if `type` is `NEN`. An array of candidate indices.
       * `difficulty` : a number indicating the difficulty of the assertion.
-    * `difficulty` : a number indicating the difficulty of the audit. This is the maximum of the difficulties in the assertions array. 
+      * `margin` : an integer indicating the difference in the tallies associated with the winner and loser.
+    * `difficulty` : a number indicating the difficulty of the audit. This is the maximum of the difficulties in the assertions array.
+    * `margin` : an integer indicating the smallest margin of the audit. This is the minimum of the margins in the assertions array.
     * `winner` : The index of the candidate who won - an integer between `0` and `num_candidates-1`. 
     * `num_candidates` : The number of candidates (an integer).
 

@@ -20,6 +20,13 @@ span.difficulty_start {
     padding-right: 1em;
 }
 
+span.margin_start {
+    display: inline-block;
+    width : 8em;
+    text-align: right;
+    padding-right: 1em;
+}
+
 span.winner {
     color : green;
 }

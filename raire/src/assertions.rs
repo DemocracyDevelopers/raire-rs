@@ -30,16 +30,19 @@ pub struct NotEliminatedBefore {
 }
 
 impl NotEliminatedBefore {
-    pub fn difficulty<A:AuditType>(&self, votes:&Votes, audit:&A) -> AssertionDifficulty {
+    /// compute the difficulty and margin for this assertion.
+    pub fn difficulty<A:AuditType>(&self, votes:&Votes, audit:&A) -> (AssertionDifficulty,BallotPaperCount) {
         let tally_winner = votes.first_preference_only_tally(self.winner);
         let tallies = votes.restricted_tallies(&vec![self.winner,self.loser]);
         let tally_loser = tallies[1];
-        audit.difficulty(tally_winner, tally_loser) // active paper count = tally_winner+tally_loser for historical reenactment
+        let difficulty = audit.difficulty(tally_winner, tally_loser); // active paper count = tally_winner+tally_loser for historical reenactment
+        (difficulty,if tally_winner>=tally_loser {tally_winner-tally_loser} else {BallotPaperCount(0)})
     }
 
     pub fn find_best_assertion<A:AuditType>(c:CandidateIndex, later_in_pi:&[CandidateIndex], votes:&Votes, audit:&A) -> Option<AssertionAndDifficulty> {
-        let mut best_asn = f64::MAX;
+        let mut best_difficulty = f64::MAX;
         let mut best_assertion : Option<NotEliminatedBefore> = None;
+        let mut best_margin : BallotPaperCount = BallotPaperCount(0);
         for alt_c in 0..votes.num_candidates() {
             let alt_c = CandidateIndex(alt_c);
             if alt_c!=c {
@@ -50,21 +53,23 @@ impl NotEliminatedBefore {
                     // consider WO(c′′,c): Assertion that c′′ ∈ C\π beats c in a winner-only audit with winner c′′ and loser c
                     NotEliminatedBefore {winner:alt_c,loser:c}
                 };
-                let asn = contest.difficulty(votes, audit);
-                if asn<best_asn {
-                    best_asn=asn;
+                let (difficulty,margin) = contest.difficulty(votes, audit);
+                if difficulty<best_difficulty {
+                    best_difficulty=difficulty;
                     best_assertion=Some(contest);
+                    best_margin=margin;
                 }
             }
         }
         if let Some(assertion) = best_assertion {
-            Some(AssertionAndDifficulty { assertion:Assertion::NEB(assertion), difficulty:best_asn })
+            Some(AssertionAndDifficulty { assertion:Assertion::NEB(assertion), margin: best_margin, difficulty:best_difficulty })
         } else {None}
     }
 
     pub fn find_best_assertion_using_cache(c:CandidateIndex, later_in_pi:&[CandidateIndex],votes:&Votes,cache:&NotEliminatedBeforeCache) -> Option<AssertionAndDifficulty> {
-        let mut best_asn = f64::MAX;
+        let mut best_difficulty = f64::MAX;
         let mut best_assertion : Option<NotEliminatedBefore> = None;
+        let mut best_margin : BallotPaperCount = BallotPaperCount(0);
         for alt_c in 0..votes.num_candidates() {
             let alt_c = CandidateIndex(alt_c);
             if alt_c!=c {
@@ -75,15 +80,16 @@ impl NotEliminatedBefore {
                     // consider WO(c′′,c): Assertion that c′′ ∈ C\π beats c in a winner-only audit with winner c′′ and loser c
                     NotEliminatedBefore {winner:alt_c,loser:c}
                 };
-                let asn = cache.difficulty(contest);
-                if asn<best_asn {
-                    best_asn=asn;
+                let (difficulty,margin) = cache.difficulty(contest);
+                if difficulty< best_difficulty {
+                    best_difficulty =difficulty;
                     best_assertion=Some(contest);
+                    best_margin=margin;
                 }
             }
         }
         if let Some(assertion) = best_assertion {
-            Some(AssertionAndDifficulty { assertion:Assertion::NEB(assertion), difficulty:best_asn })
+            Some(AssertionAndDifficulty { assertion:Assertion::NEB(assertion), margin: best_margin, difficulty: best_difficulty })
         } else {None}
     }
 
@@ -95,13 +101,14 @@ impl NotEliminatedBefore {
 }
 
 /// Pre-compute all NEB entries to prevent duplicate computations.
+/// Store difficulty and margin
 pub struct NotEliminatedBeforeCache {
-    pub cache : Vec<Vec<AssertionDifficulty>>
+    pub cache : Vec<Vec<(AssertionDifficulty,BallotPaperCount)>>
 }
 
 impl NotEliminatedBeforeCache {
     /// Get the cached difficulty for given winner and loser.
-    pub fn difficulty(&self,entry:NotEliminatedBefore) -> AssertionDifficulty {
+    pub fn difficulty(&self,entry:NotEliminatedBefore) -> (AssertionDifficulty,BallotPaperCount) {
         self.cache[entry.winner.0 as usize][entry.loser.0 as usize]
     }
     pub fn new<A:AuditType>(votes:&Votes, audit:&A) -> Self {
@@ -109,7 +116,7 @@ impl NotEliminatedBeforeCache {
         for winner in 0..votes.num_candidates() {
             let mut row = vec![];
             for loser in 0..votes.num_candidates() {
-                row.push(if winner==loser { f64::INFINITY } else { NotEliminatedBefore{winner:CandidateIndex(winner),loser:CandidateIndex(loser)}.difficulty(votes,audit)} );
+                row.push(if winner==loser { (f64::INFINITY,BallotPaperCount(0)) } else { NotEliminatedBefore{winner:CandidateIndex(winner),loser:CandidateIndex(loser)}.difficulty(votes,audit)} );
             }
             cache.push(row);
         }
@@ -200,10 +207,11 @@ impl NotEliminatedNext {
         }
         if let Some(loser) = best_loser {
             let difficulty = audit.difficulty(tally_winner, tally_loser);  // active paper count = tallies.iter().cloned().sum() for historical reenactment
+            let margin = if tally_winner>=tally_loser {tally_winner-tally_loser} else {BallotPaperCount(0)};
             let mut continuing = continuing.to_vec();
             continuing.sort_unstable_by_key(|c|c.0); // important to make it canonical so that equality checks of assertions work, and so is_continuing can use a binary search. Also sorted is easier to read.
             let assertion = NotEliminatedNext { winner, loser, continuing };
-            Some(AssertionAndDifficulty { assertion:Assertion::NEN(assertion), difficulty })
+            Some(AssertionAndDifficulty { assertion:Assertion::NEN(assertion), margin, difficulty })
         } else {None}
     }
 
@@ -238,6 +246,8 @@ pub enum Assertion {
 #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
 pub struct AssertionAndDifficulty {
     pub assertion : Assertion,
+    /// The number of votes between the winner and loser.
+    pub margin : BallotPaperCount,
     pub difficulty: f64,
 }
 

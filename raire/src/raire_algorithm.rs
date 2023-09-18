@@ -15,7 +15,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use crate::assertions::{all_elimination_orders, Assertion, AssertionAndDifficulty, NotEliminatedNext, NotEliminatedBefore, EliminationOrder, EliminationOrderSuffix, EffectOfAssertionOnEliminationOrderSuffix, NotEliminatedBeforeCache};
 use crate::audit_type::{AssertionDifficulty, AuditType};
-use crate::irv::{CandidateIndex, Votes};
+use crate::irv::{BallotPaperCount, CandidateIndex, Votes};
 use serde::Deserialize;
 use serde::Serialize;
 use crate::RaireError;
@@ -25,6 +25,8 @@ use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTr
 pub struct RaireResult {
     pub assertions : Vec<AssertionAndDifficulty>,
     pub difficulty: AssertionDifficulty,
+    /// The smallest margin in votes in one of the assertions. Provided primarily for informational purposes.
+    pub margin : BallotPaperCount,
     pub winner : CandidateIndex,
     pub num_candidates : u32,
 }
@@ -147,7 +149,7 @@ impl Ord for SequenceAndEffort {
 
 fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A,neb_cache:&NotEliminatedBeforeCache) -> AssertionAndDifficulty {
     let c = pi[0];
-    let mut res : AssertionAndDifficulty = AssertionAndDifficulty { assertion: Assertion::NEB(NotEliminatedBefore { winner: c, loser: c }), difficulty: f64::INFINITY }; // dummy infinitely bad assertion
+    let mut res : AssertionAndDifficulty = AssertionAndDifficulty { assertion: Assertion::NEB(NotEliminatedBefore { winner: c, loser: c }), margin: BallotPaperCount(0), difficulty: f64::INFINITY }; // dummy infinitely bad assertion
     // consider WO contests
     if let Some(assertion) = NotEliminatedBefore::find_best_assertion_using_cache(c, &pi[1..],votes, neb_cache) {
         if assertion.difficulty < res.difficulty { res=assertion; }
@@ -261,7 +263,8 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
         }
     }
     log::debug!("Trimmed assertions down to {}.",assertions.len());
-    Ok(RaireResult{assertions, difficulty: bound , winner,num_candidates:votes.num_candidates() })
+    let margin = assertions.iter().map(|a|a.margin).min().unwrap_or(BallotPaperCount(0));
+    Ok(RaireResult{assertions, difficulty: bound , margin, winner,num_candidates:votes.num_candidates() })
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]

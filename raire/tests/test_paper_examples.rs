@@ -230,8 +230,8 @@ fn test_example10() {
     assert_eq!(BRAVO_EG5.total_auditable_ballots,votes.total_votes());
     let assertion1 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(1) };
     let assertion2 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(2) };
-    let asn1 = assertion1.difficulty(&votes, &BRAVO_EG5);
-    let asn2 = assertion2.difficulty(&votes, &BRAVO_EG5);
+    let asn1 = assertion1.difficulty(&votes, &BRAVO_EG5).0;
+    let asn2 = assertion2.difficulty(&votes, &BRAVO_EG5).0;
     println!("Example 7 : ASN1={asn1} ASN2={asn2} ");
     assert!((asn1-135.3).abs()<0.1);
     assert!((asn2-135.2).abs()<0.1);
@@ -253,8 +253,8 @@ fn test_example11() {
     assert_eq!(MACRO_EG5.total_auditable_ballots,votes.total_votes());
     let assertion1 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(1) };
     let assertion2 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(2) };
-    let asn1 = assertion1.difficulty(&votes, &MACRO_EG5);
-    let asn2 = assertion2.difficulty(&votes, &MACRO_EG5);
+    let asn1 = assertion1.difficulty(&votes, &MACRO_EG5).0;
+    let asn2 = assertion2.difficulty(&votes, &MACRO_EG5).0;
     println!("Example 7 : ASN1={asn1} ASN2={asn2} ");
     assert!((asn1-36.2).abs()<0.1);
     assert!((asn2-36.2).abs()<0.1);
@@ -274,7 +274,7 @@ fn test_example12_asns() {
     let assertion4 = NotEliminatedNext { winner:CandidateIndex(0), loser: CandidateIndex(2), continuing: vec![CandidateIndex(0), CandidateIndex(1), CandidateIndex(2)] };
     let asn1 = assertion1.difficulty(&votes, &BRAVO_EG12);
     let asn2 = assertion2.difficulty(&votes, &BRAVO_EG12);
-    let asn3 = assertion3.difficulty(&votes, &BRAVO_EG12);
+    let asn3 = assertion3.difficulty(&votes, &BRAVO_EG12).0;
     let asn4 = assertion4.difficulty(&votes, &BRAVO_EG12);
     println!("Example 7 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4}");
     let asn1p = 100.0*asn1/votes.total_votes().0 as f64;
@@ -296,7 +296,7 @@ fn test_example12_asns() {
     let asn1 = assertion1.difficulty(&votes, &MACRO_EG12);
     let asn2 = assertion2.difficulty(&votes, &MACRO_EG12);
     let asn3 = assertion3.difficulty(&votes, &MACRO_EG12);
-    let asn4 = assertion4.difficulty(&votes, &MACRO_EG12);
+    let asn4 = assertion4.difficulty(&votes, &MACRO_EG12).0;
     let asn5a = assertion5a.difficulty(&votes, &MACRO_EG12);
     let asn5b = assertion5b.difficulty(&votes, &MACRO_EG12);
     println!("Example 7 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4} ASN5={asn5a} and {asn5b}");

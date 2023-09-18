@@ -61,7 +61,7 @@ fn test_neb_assertions() {
     let votes = get_votes();
     let test_neb = |winner:CandidateIndex,loser:CandidateIndex| {
         let assertion = NotEliminatedBefore{winner,loser};
-        assertion.difficulty(&votes, &AUDIT)
+        assertion.difficulty(&votes, &AUDIT).0
     };
     assert!(test_neb(B,A).is_infinite());
     assert!(test_neb(C,A).is_infinite());

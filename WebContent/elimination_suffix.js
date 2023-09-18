@@ -570,10 +570,12 @@ function describe_raire_result(output_div,explanation_div,data) {
         let heading_name = "Assertions";
         if (data.metadata.hasOwnProperty("contest")) heading_name+=" for "+data.metadata.contest;
         if (data.solution.Ok.hasOwnProperty("difficulty")) heading_name+=" - difficulty = "+data.solution.Ok.difficulty;
+        if (data.solution.Ok.hasOwnProperty("margin")) heading_name+=" margin = "+data.solution.Ok.margin;
         add(output_div,"h3","Assertions").innerText=heading_name;
         for (const av of data.solution.Ok.assertions) {
             let adiv = add(output_div,"div");
             if (av.hasOwnProperty("difficulty")) add(adiv,"span","difficulty_start").innerText=""+av.difficulty; // Michelle's format doesn't have it for individual assertions
+            if (av.hasOwnProperty("margin")) add(adiv,"span","margin_start").innerText=""+av.margin; // Michelle's format (and old raire-rs) doesn't have it for individual assertions
             const a = av.assertion;
             const adesc = add(adiv,"span");
             if (a["type"] === "NEN") {
