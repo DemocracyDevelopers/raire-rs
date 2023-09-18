@@ -34,7 +34,7 @@ impl NotEliminatedBefore {
         let tally_winner = votes.first_preference_only_tally(self.winner);
         let tallies = votes.restricted_tallies(&vec![self.winner,self.loser]);
         let tally_loser = tallies[1];
-        audit.difficulty(tally_winner, tally_loser, tally_winner+tally_loser) // TODO this active paper count seems wrong but produces answers compatible with the paper.
+        audit.difficulty(tally_winner, tally_loser) // active paper count = tally_winner+tally_loser for historical reenactment
     }
 
     pub fn find_best_assertion<A:AuditType>(c:CandidateIndex, later_in_pi:&[CandidateIndex], votes:&Votes, audit:&A) -> Option<AssertionAndDifficulty> {
@@ -158,7 +158,7 @@ impl SpecificLoserAmongstContinuing {
             if self.losers.contains(&self.continuing[i]) { tally_loser+=tallies[i]; }
             else if lowest_tally_winner>tallies[i] { lowest_tally_winner=tallies[i]; }
         }
-        audit.difficulty(lowest_tally_winner, tally_loser, tallies.iter().cloned().sum())
+        audit.difficulty(lowest_tally_winner, tally_loser) // active paper count = tallies.iter().cloned().sum() for historical reenactment
     }
 }
 
@@ -185,7 +185,7 @@ impl NotEliminatedNext {
             if self.loser==self.continuing[i] { tally_loser=tallies[i]; }
             else if self.winner==self.continuing[i] { tally_winner=tallies[i]; }
         }
-        audit.difficulty(tally_winner, tally_loser, tallies.iter().cloned().sum())
+        audit.difficulty(tally_winner, tally_loser) // active paper count = tallies.iter().cloned().sum() for historical reenactment
     }
 
     pub fn find_best_difficulty<A:AuditType>(votes:&Votes, audit:&A, continuing:&[CandidateIndex], winner:CandidateIndex) -> Option<AssertionAndDifficulty> {
@@ -199,7 +199,7 @@ impl NotEliminatedNext {
             else if tallies[i]<=tally_loser { best_loser=Some(continuing[i]);  tally_loser=tallies[i]; }
         }
         if let Some(loser) = best_loser {
-            let difficulty = audit.difficulty(tally_winner, tally_loser, tallies.iter().cloned().sum());
+            let difficulty = audit.difficulty(tally_winner, tally_loser);  // active paper count = tallies.iter().cloned().sum() for historical reenactment
             let mut continuing = continuing.to_vec();
             continuing.sort_unstable_by_key(|c|c.0); // important to make it canonical so that equality checks of assertions work, and so is_continuing can use a binary search. Also sorted is easier to read.
             let assertion = NotEliminatedNext { winner, loser, continuing };

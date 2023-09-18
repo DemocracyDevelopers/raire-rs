@@ -1,7 +1,5 @@
 # RAIRE-rs
 
-# Important Note: This program is not yet ready for production use.
-
 This is a Rust port of RAIRE,
 based on software (c) Michelle Blom in C++ https://github.com/michelleblom/audit-irv-cp/tree/raire-branch
 documented in https://arxiv.org/pdf/1903.08804.pdf
@@ -105,7 +103,12 @@ The input is JSON, with a single object containing the following fields:
   * `"None"` does no such post-processing. 
   * `"MinimizeTree"` does minimal post-processing designed to minimize the total size of the tree showing all possible elimination orders until they are ruled out by an assertion. This is almost always quite fast, and a safe option which probably minimizes human effort to verify the output.
   * `"MinimizeAssertions"` does more complex post-processing that can eliminate more redundant assertions, at the expense of a possibly larger tree of possible elimination audits. This is often fast, but can sometimes take significantly longer than the main RAIRE algorithm.
-
+* `difficulty_estimate` Optional (and you probably don't want to use it) number, an estimate of the difficulty. 
+  If you know the difficulty in advance (by some magic or wild guess), you
+  can set this number, and it will take it to be a lower bound on the difficulty of the problem. This could potentially make the algorithm 
+  faster. This is probably not useful in practice, but is useful for performance testing and algorithm experimentation. In practice, the
+  heuristics seem to usually do a good enough job of finding the optimum value that this doesn't help much even if you have a magic oracle.
+  
 # JSON output format
 
 The output is JSON with two fields:
@@ -141,8 +144,6 @@ See [A guide to Raire](TODO) for details.
 ```bash
 cargo test
 ```
-
-Some of these currently fail. See the important note at the top of this file.
 
 # Running original RAIRE examples and interpreting the answers.
 

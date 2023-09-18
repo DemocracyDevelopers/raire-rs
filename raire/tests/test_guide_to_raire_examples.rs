@@ -15,6 +15,7 @@ use serde_json::json;
 use raire::assertions::{NotEliminatedNext, NotEliminatedBefore};
 use raire::audit_type::{Audit, BallotComparisonOneOnDilutedMargin};
 use raire::irv::{BallotPaperCount, CandidateIndex, Vote, Votes};
+use raire::raire_algorithm::TrimAlgorithm;
 use raire::RaireProblem;
 
 const A : CandidateIndex = CandidateIndex(0); // Alice
@@ -96,11 +97,16 @@ fn test_raire() {
         num_candidates : 4,
         votes : get_votes().votes,
         winner : Some(CandidateIndex(2)),
-        audit : Audit::OneOnMargin(AUDIT)
+        audit : Audit::OneOnMargin(AUDIT),
+        trim_algorithm: Some(TrimAlgorithm::MinimizeAssertions),
+        difficulty_estimate: None,
     };
     println!("{}",serde_json::to_string_pretty(&problem).unwrap());
     let solution = problem.solve();
     println!("{}",serde_json::to_string_pretty(&solution).unwrap());
-    // TODO complete.
+    let solution = solution.solution.unwrap();
+    assert_eq!(CandidateIndex(2),solution.winner);
+    assert_eq!(27.0,solution.difficulty);
+    assert_eq!(5,solution.assertions.len());
 }
 

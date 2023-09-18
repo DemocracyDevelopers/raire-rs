@@ -20,9 +20,13 @@ pub type AssertionDifficulty = f64;
 /// An audit type is a method for determining a difficulty (higher means more difficult, infinite means impossible) for
 /// a comparison of two claimed tallys.
 ///
-/// The active_paper_count should not be used, and is included for backwards compatability of some tests, and may soon be removed.
+/// Often the actual number computed is more complex than some simpler number that is a monotonic proxy for the
+/// difficulty, and the raire algorithm could use this at some improvement in execution time and possibly memory use.
+/// This is not done as:
+/// * The gains would be very small and the extra complexity would be significant
+/// * It makes pre-specifying the difficulty difficult.
 pub trait AuditType {
-    fn difficulty(&self, lowest_tally_winner:BallotPaperCount, highest_tally_loser:BallotPaperCount, active_paper_count:BallotPaperCount) -> AssertionDifficulty;
+    fn difficulty(&self, lowest_tally_winner:BallotPaperCount, highest_tally_loser:BallotPaperCount) -> AssertionDifficulty;
 }
 
 
@@ -36,51 +40,33 @@ pub struct BallotPollingBRAVO {
 
 
 impl BallotPollingBRAVO {
-    /// compute ASN using the BRAVO method described in the original paper, except using only unexhausted ballot papers as the denominator computing p_w and p_l.
-    /// Don't use this.
-    pub fn average_sample_number_original_paper_using_active_paper_count(&self,lowest_tally_winner:BallotPaperCount,highest_tally_loser:BallotPaperCount,active_paper_count:BallotPaperCount) -> AssertionDifficulty {
-        //println!("Doing BRAVO with winner {lowest_tally_winner} loser {highest_tally_loser} active_paper_count={active_paper_count} α={}",self.confidence);
-        if lowest_tally_winner.0<=highest_tally_loser.0 { f64::INFINITY } else {
-            let w = lowest_tally_winner.0 as f64;
-            let l = highest_tally_loser.0 as f64;
-            let s = w/(w+l);
-            let twos = 2.0*s;
-            let ln2s = twos.ln();
-            let numerator = 0.5*ln2s-self.confidence.ln();
-            let denominator = (w*ln2s+l*(2.0-twos).ln())/(active_paper_count.0 as f64);
-            numerator/denominator
-        }
-    }
     /// compute ASN using the BRAVO method described in the original paper.
-    pub fn average_sample_number_original_paper_using_total_auditable_ballots(&self,lowest_tally_winner:BallotPaperCount,highest_tally_loser:BallotPaperCount,_active_paper_count:BallotPaperCount) -> AssertionDifficulty {
-        //println!("Doing BRAVO with winner {lowest_tally_winner} loser {highest_tally_loser} active_paper_count={active_paper_count} α={}",self.confidence);
-        if lowest_tally_winner.0<=highest_tally_loser.0 { f64::INFINITY } else {
-            let w = lowest_tally_winner.0 as f64;
-            let l = highest_tally_loser.0 as f64;
+    pub fn average_sample_number_original_paper_using_total_auditable_ballots(&self,lowest_tally_winner:BallotPaperCount,highest_tally_loser:BallotPaperCount) -> AssertionDifficulty {
+        // println!("Doing BRAVO with winner {lowest_tally_winner} loser {highest_tally_loser} active_paper_count={active_paper_count} α={}",self.confidence);
+        self.bravo_function(lowest_tally_winner,highest_tally_loser,self.total_auditable_ballots)
+    }
+
+    /// This function is only public for testing some historical data. You probably don't want to use this directly.
+    pub fn bravo_function(&self,winner_tally:BallotPaperCount,loser_tally:BallotPaperCount,paper_count:BallotPaperCount) -> AssertionDifficulty {
+        if winner_tally.0<=loser_tally.0 { f64::INFINITY } else {
+            let w = winner_tally.0 as f64;
+            let l = loser_tally.0 as f64;
             let s = w/(w+l);
             let twos = 2.0*s;
             let ln2s = twos.ln();
             let numerator = 0.5*ln2s-self.confidence.ln();
-            let denominator = (w*ln2s+l*(2.0-twos).ln())/(self.total_auditable_ballots.0 as f64);
+            let denominator = (w*ln2s+l*(2.0-twos).ln())/(paper_count.0 as f64);
             numerator/denominator
         }
     }
 }
 
 impl AuditType for BallotPollingBRAVO {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, active_paper_count:BallotPaperCount) -> AssertionDifficulty {
-        self.average_sample_number_original_paper_using_total_auditable_ballots(lowest_tally_winner,highest_tally_loser,active_paper_count)
+    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount) -> AssertionDifficulty {
+        self.average_sample_number_original_paper_using_total_auditable_ballots(lowest_tally_winner,highest_tally_loser)
     }
 }
 
-/// like BallotPollingBRAVO but use the number of non-exhausted papers as the denominator in p_w and p_l.
-pub struct BallotPollingBRAVOUsingActivePaperCount(pub BallotPollingBRAVO);
-
-impl AuditType for BallotPollingBRAVOUsingActivePaperCount {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, active_paper_count:BallotPaperCount) -> AssertionDifficulty {
-        self.0.average_sample_number_original_paper_using_active_paper_count(lowest_tally_winner,highest_tally_loser,active_paper_count)
-    }
-}
 
 
 /// A MACRO ballot level comparison audit.
@@ -106,7 +92,7 @@ impl BallotComparisonMACRO {
 }
 
 impl AuditType for BallotComparisonMACRO {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, _active_paper_count:BallotPaperCount) -> AssertionDifficulty {
+    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount) -> AssertionDifficulty {
         self.average_sample_number_original_paper(lowest_tally_winner,highest_tally_loser)
     }
 }
@@ -119,7 +105,7 @@ pub struct BallotComparisonOneOnDilutedMargin {
 }
 
 impl AuditType for BallotComparisonOneOnDilutedMargin {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, _active_paper_count:BallotPaperCount) -> AssertionDifficulty {
+    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount) -> AssertionDifficulty {
         if lowest_tally_winner<=highest_tally_loser { f64::INFINITY } else {
             let reciprocal_diluted_margin = self.total_auditable_ballots.0 as f64/(lowest_tally_winner-highest_tally_loser).0 as f64;
             reciprocal_diluted_margin
@@ -136,7 +122,7 @@ pub struct BallotPollingOneOnDilutedMarginSquared {
 }
 
 impl AuditType for BallotPollingOneOnDilutedMarginSquared {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, _active_paper_count:BallotPaperCount) -> AssertionDifficulty {
+    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount) -> AssertionDifficulty {
         if lowest_tally_winner<=highest_tally_loser { f64::INFINITY } else {
             let reciprocal_diluted_margin = self.total_auditable_ballots.0 as f64/(lowest_tally_winner-highest_tally_loser).0 as f64;
             reciprocal_diluted_margin*reciprocal_diluted_margin
@@ -156,12 +142,12 @@ pub enum Audit {
 }
 
 impl AuditType for Audit {
-    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount, active_paper_count: BallotPaperCount) -> AssertionDifficulty {
+    fn difficulty(&self, lowest_tally_winner: BallotPaperCount, highest_tally_loser: BallotPaperCount) -> AssertionDifficulty {
         match self {
-            Audit::BRAVO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
-            Audit::MACRO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser,active_paper_count),
-            Audit::OneOnMargin(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser, active_paper_count),
-            Audit::OneOnMarginSq(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser, active_paper_count),
+            Audit::BRAVO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser),
+            Audit::MACRO(audit) => audit.difficulty(lowest_tally_winner,highest_tally_loser),
+            Audit::OneOnMargin(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser),
+            Audit::OneOnMarginSq(audit) => audit.difficulty(lowest_tally_winner, highest_tally_loser),
         }
     }
 }
