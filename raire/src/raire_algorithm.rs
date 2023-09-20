@@ -252,9 +252,6 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
     log::debug!("Finished generating {} assertions difficulty {}, now need to trim.",assertions.len(),bound);
     match trim_algorithm {
         TrimAlgorithm::None => {}
-        TrimAlgorithm::Slow => {
-            crate::order_assertions::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates());
-        }
         TrimAlgorithm::MinimizeTree => {
             crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately)?;
         }
@@ -305,8 +302,6 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
 pub enum TrimAlgorithm {
     /// Don't do any trimming
     None,
-    /// You probably don't want to do this. It is the original algorithm I came up with which is gratuitously slow and not optimal. Left temporarily for historical reasons, will be deleted soon.
-    Slow,
     /// Expand the tree until an assertion rules the path out, removing redundant assertions with a simple heuristic. Minimizes size of tree for human to verify, but may have unnecessary assertions.
     MinimizeTree,
     /// Expand the tree until all all assertions are resolved, and remove redundant assertions with a simple heuristic. Minimizes the number of assertions, but may increase the size of the tree to verify.

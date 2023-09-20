@@ -18,7 +18,6 @@ pub mod assertions;
 pub mod irv;
 pub mod audit_type;
 pub mod raire_algorithm;
-mod order_assertions;
 pub mod tree_showing_what_assertions_pruned_leaves;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
