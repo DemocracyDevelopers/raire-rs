@@ -567,6 +567,15 @@ function describe_raire_result(output_div,explanation_div,data) {
         return ids.map(candidate_name).join(",")
     }
     if (data.solution && data.solution.Ok) {
+        function describe_time(what,time_taken) {
+            if (time_taken) {
+                let time_desc = time_taken.seconds>0.1?Number(time_taken.seconds).toFixed(1)+" seconds":Number(time_taken.seconds*1000).toFixed(2)+" milliseconds";
+                add(output_div,"p").innerText="Time to "+what+" : "+time_desc+" ("+time_taken.work+" operations)";
+            }
+        }
+        describe_time("determine winners",data.solution.Ok.time_to_determine_winners);
+        describe_time("find assertions",data.solution.Ok.time_to_find_assertions);
+        describe_time("trim assertions",data.solution.Ok.time_to_trim_assertions);
         let heading_name = "Assertions";
         if (data.metadata.hasOwnProperty("contest")) heading_name+=" for "+data.metadata.contest;
         if (data.solution.Ok.hasOwnProperty("difficulty")) heading_name+=" - difficulty = "+data.solution.Ok.difficulty;
@@ -607,8 +616,12 @@ function describe_raire_result(output_div,explanation_div,data) {
         explain(explanation_div,assertions,candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked,hide_winner,winner_id);
     } else if (data.solution && data.solution.Err) {
         let err = data.solution.Err;
-        if (err==="Timeout") {
-            add(output_div,"p","error").innerText="Timeout - the problem seemed to take too long";
+        if (err==="TimeoutCheckingWinner") {
+            add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small (0 or negative timeout is a bad idea)";
+        } else if (err==="TimeoutFindingAssertions") {
+            add(output_div,"p","error").innerText="Timeout finding assertions - your problem is quite hard";
+        } else if (err==="TimeoutTrimmingAssertions") {
+            add(output_div,"p","error").innerText="Timeout trimming assertions - you can probably get an answer with a simpler trimming algorithm";
         } else if (Array.isArray(err.CouldNotRuleOut)) {
             add(output_div,"p","error").innerText="Impossible to audit. Could not rule out the following elimination order:";
             for (let i=0;i<err.CouldNotRuleOut.length;i++) {

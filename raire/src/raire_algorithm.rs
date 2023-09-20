@@ -19,6 +19,7 @@ use crate::irv::{BallotPaperCount, CandidateIndex, Votes};
 use serde::Deserialize;
 use serde::Serialize;
 use crate::RaireError;
+use crate::timeout::{TimeOut, TimeTaken};
 use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -29,6 +30,9 @@ pub struct RaireResult {
     pub margin : BallotPaperCount,
     pub winner : CandidateIndex,
     pub num_candidates : u32,
+    pub time_to_determine_winners : TimeTaken,
+    pub time_to_find_assertions : TimeTaken,
+    pub time_to_trim_assertions : TimeTaken,
 }
 
 impl RaireResult {
@@ -57,7 +61,7 @@ impl RaireResult {
         let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
         for candidate in 0..self.num_candidates {
             let candidate = CandidateIndex(candidate);
-            let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,self.num_candidates,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+            let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,self.num_candidates,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut TimeOut::never())?;
             if tree.valid!= (candidate==self.winner) { return Err(if candidate==self.winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
         }
         Ok(())
@@ -167,9 +171,10 @@ fn find_best_audit<A:AuditType>(pi:&[CandidateIndex],votes:&Votes,audit:&A,neb_c
 /// Testing shows that it is almost always a moderate improvement in speed.
 const USE_DIVING : bool = true;
 
-pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,trim_algorithm:TrimAlgorithm) -> Result<RaireResult,RaireError> {
+pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,trim_algorithm:TrimAlgorithm,timeout:&mut TimeOut) -> Result<RaireResult,RaireError> {
     log::debug!("Starting raire with {} candidates and {} distinct votes",votes.num_candidates(),votes.votes.len());
-    let irv_result = votes.run_election();
+    let irv_result = votes.run_election(timeout)?;
+    let time_to_determine_winners = timeout.time_taken();
     if let Some(winner) = winner {
         if !irv_result.possible_winners.contains(&winner) { return Err(RaireError::WrongWinner(irv_result.possible_winners))}
     }
@@ -197,6 +202,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
     }
     // Repeatedly expand the sequence with largest ASN in F
     while let Some(mut sequence_being_considered) = frontier.pop() { // 10-12
+        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutFindingAssertions)}
         if sequence_being_considered.difficulty()!=last_difficulty {
             last_difficulty=sequence_being_considered.difficulty();
             log::trace!("Difficulty reduced to {}{}",last_difficulty,if last_difficulty<=bound {" OK"} else {""});
@@ -249,19 +255,21 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
         }
         //println!("frontier now includes {} elements",frontier.len())
     }
+    let time_to_find_assertions = timeout.time_taken()-time_to_determine_winners;
     log::debug!("Finished generating {} assertions difficulty {}, now need to trim.",assertions.len(),bound);
     match trim_algorithm {
         TrimAlgorithm::None => {}
         TrimAlgorithm::MinimizeTree => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately)?;
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,timeout)?;
         }
         TrimAlgorithm::MinimizeAssertions => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever)?;
+            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever,timeout)?;
         }
     }
+    let time_to_trim_assertions = timeout.time_taken()-time_to_find_assertions-time_to_determine_winners;
     log::debug!("Trimmed assertions down to {}.",assertions.len());
     let margin = assertions.iter().map(|a|a.margin).min().unwrap_or(BallotPaperCount(0));
-    Ok(RaireResult{assertions, difficulty: bound , margin, winner,num_candidates:votes.num_candidates() })
+    Ok(RaireResult{assertions, difficulty: bound , margin, winner,num_candidates:votes.num_candidates(), time_to_determine_winners, time_to_find_assertions, time_to_trim_assertions })
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]

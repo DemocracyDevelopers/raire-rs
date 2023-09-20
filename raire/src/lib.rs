@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ConcreteSTV.  If not, see <https://www.gnu.org/licenses/>.
 
 
+use std::time::Duration;
 use crate::audit_type::Audit;
 use crate::irv::{CandidateIndex, Vote, Votes};
 use crate::raire_algorithm::{raire, RaireResult, TrimAlgorithm};
@@ -19,11 +20,16 @@ pub mod irv;
 pub mod audit_type;
 pub mod raire_algorithm;
 pub mod tree_showing_what_assertions_pruned_leaves;
+pub mod timeout;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
 pub enum RaireError {
-    #[error("time out - problem too hard")]
-    Timeout,
+    #[error("time out while checking all possible winners - this is a really nasty dataset")]
+    TimeoutCheckingWinner,
+    #[error("time out while finding assertions")]
+    TimeoutFindingAssertions,
+    #[error("time out while trimming assertions - try rerunning with a faster trim algorithm.")]
+    TimeoutTrimmingAssertions,
     /// An alternate winner is possible when there are ties. There may be tie resolution legislation
     /// that unambiguously resolves ties, but such a situation where the winner depends upon such
     /// tie resolution is implausible to audit stochastically as a one vote difference would change
@@ -60,6 +66,8 @@ pub struct RaireProblem {
     /// don't bother optimizing below this difficulty level. A value of this > 0 may make the algorithm faster, but may make the results worse, but no worse than this.
     #[serde(default,skip_serializing_if = "Option::is_none")]
     pub difficulty_estimate : Option<f64>,
+    #[serde(default,skip_serializing_if = "Option::is_none")]
+    pub time_limit_seconds : Option<f64>,
 }
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
@@ -71,7 +79,8 @@ pub struct RaireSolution {
 impl RaireProblem {
     pub fn solve(self) -> RaireSolution {
         let votes = Votes::new(self.votes,self.num_candidates);
-        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree));
+        let mut timeout = timeout::TimeOut::new(None,self.time_limit_seconds.map(|seconds|Duration::from_secs_f64(seconds)));
+        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree),&mut timeout);
         RaireSolution{metadata:self.metadata,solution}
     }
 }

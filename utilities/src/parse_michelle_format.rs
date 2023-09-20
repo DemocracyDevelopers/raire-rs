@@ -19,6 +19,7 @@ use serde_json::json;
 use raire::audit_type::Audit;
 use raire::irv::{BallotPaperCount, CandidateIndex, Vote, Votes};
 use raire::RaireProblem;
+use raire::timeout::TimeOut;
 
 pub struct Contest {
     pub num_candidates : usize,
@@ -73,7 +74,7 @@ impl Contest {
             votes.push(Vote{ n: BallotPaperCount(*n), prefs:prefs.clone() });
         }
         let votes = Votes::new(votes,self.num_candidates);
-        let winners = votes.run_election();
+        let winners = votes.run_election(&mut TimeOut::never())?;
         if winners.possible_winners.len()!=1 { return Err(anyhow!("RAIRE only works if there is one possible winner."))}
         let winner = winners.possible_winners[0];
         let metadata = json!({"candidates":self.candidate_names,"contest":self.id.clone()});
@@ -85,6 +86,7 @@ impl Contest {
             audit,
             trim_algorithm: None,
             difficulty_estimate: None,
+            time_limit_seconds: None,
         })
     }
 }

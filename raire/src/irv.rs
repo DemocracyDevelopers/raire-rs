@@ -21,6 +21,8 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 use std::str::FromStr;
 use serde::Deserialize;
 use serde::Serialize;
+use crate::RaireError;
+use crate::timeout::TimeOut;
 
 /// A number representing a count of pieces of paper.
 #[derive(Copy,Clone,Eq, PartialEq,Serialize,Deserialize,Ord, PartialOrd)]
@@ -169,11 +171,12 @@ impl Votes {
 
     pub fn num_candidates(&self) -> u32 { self.first_preference_votes.len() as u32 }
 
-    pub fn run_election(&self) -> IRVResult {
+    /// only possible error is RaireError::TimeoutCheckingWinner
+    pub fn run_election(&self,timeout:&mut TimeOut) -> Result<IRVResult,RaireError> {
         let mut work = IRVElectionWork{ winner_given_continuing_candidates: Default::default(), elimination_order: vec![] };
         let all_candidates : Vec<CandidateIndex> = (0..self.num_candidates()).into_iter().map(|c|CandidateIndex(c)).collect();
-        let possible_winners = work.find_all_possible_winners(all_candidates,&self);
-        IRVResult{ possible_winners, elimination_order: work.elimination_order }
+        let possible_winners = work.find_all_possible_winners(all_candidates,&self,timeout)?;
+        Ok(IRVResult{ possible_winners, elimination_order: work.elimination_order })
     }
 
 }
@@ -196,8 +199,9 @@ struct IRVElectionWork {
 
 impl IRVElectionWork {
     /// Find all possible winners, trying all options with ties.
-    fn find_all_possible_winners(&mut self,continuing:Vec<CandidateIndex>,votes:&Votes) -> Vec<CandidateIndex> {
-        if continuing.len()==1 {
+    fn find_all_possible_winners(&mut self,continuing:Vec<CandidateIndex>,votes:&Votes,timeout:&mut TimeOut) -> Result<Vec<CandidateIndex>,RaireError> {
+        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutCheckingWinner); }
+        Ok(if continuing.len()==1 {
             if self.elimination_order.len()+continuing.len()==votes.num_candidates() as usize {
                 // There may be multiple elimination orders. The check above checks that we are in the path of the first depth first traversal of the tree of elimination orders.
                 self.elimination_order.push(continuing[0]);
@@ -217,13 +221,13 @@ impl IRVElectionWork {
                     }
                     let mut new_continuing = continuing[0..i].to_vec();
                     new_continuing.extend_from_slice(&continuing[i+1..]);
-                    let res = self.find_all_possible_winners(new_continuing,votes);
+                    let res = self.find_all_possible_winners(new_continuing,votes,timeout)?;
                     for c in res { winners.insert(c); }
                 }
             }
             let winners : Vec<CandidateIndex> = winners.into_iter().collect();
             self.winner_given_continuing_candidates.insert(continuing,winners.clone());
             winners
-        }
+        })
     }
 }

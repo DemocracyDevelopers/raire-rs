@@ -17,6 +17,7 @@ use raire::audit_type::{Audit, BallotComparisonOneOnDilutedMargin};
 use raire::irv::{BallotPaperCount, CandidateIndex, Vote, Votes};
 use raire::raire_algorithm::TrimAlgorithm;
 use raire::RaireProblem;
+use raire::timeout::TimeOut;
 
 const A : CandidateIndex = CandidateIndex(0); // Alice
 const B : CandidateIndex = CandidateIndex(1); // Bob
@@ -50,7 +51,7 @@ fn test_votes_structure() {
     assert_eq!(BallotPaperCount(3500),votes.first_preference_only_tally(CandidateIndex(3)));
     assert_eq!(vec![BallotPaperCount(4000),BallotPaperCount(6000),BallotPaperCount(3500)],votes.restricted_tallies(&vec![CandidateIndex(0),CandidateIndex(2),CandidateIndex(3)]));
     assert_eq!(vec![BallotPaperCount(5500),BallotPaperCount(6000)],votes.restricted_tallies(&vec![CandidateIndex(0),CandidateIndex(2)]));
-    let result = votes.run_election();
+    let result = votes.run_election(&mut TimeOut::never()).unwrap();
     assert_eq!(vec![C],result.possible_winners);
     assert_eq!(vec![B,D,A,C],result.elimination_order);
 }
@@ -100,6 +101,7 @@ fn test_raire() {
         audit : Audit::OneOnMargin(AUDIT),
         trim_algorithm: Some(TrimAlgorithm::MinimizeAssertions),
         difficulty_estimate: None,
+        time_limit_seconds: None,
     };
     println!("{}",serde_json::to_string_pretty(&problem).unwrap());
     let solution = problem.solve();

@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 use crate::assertions::{Assertion, AssertionAndDifficulty, EffectOfAssertionOnEliminationOrderSuffix};
 use crate::irv::CandidateIndex;
 use crate::RaireError;
+use crate::timeout::TimeOut;
 
 /// Produce a tree of reverse-elimination-order descending down until either
 /// * At least one assertion prunes all subsequent orders
@@ -28,7 +29,8 @@ pub struct TreeNodeShowingWhatAssertionsPrunedIt {
 
 impl TreeNodeShowingWhatAssertionsPrunedIt {
     /// Create a new tree node with a given path back to the root and candidate being eliminated.
-    pub fn new (parent_elimination_order_suffix:&[CandidateIndex], candidate_being_eliminated_at_this_node:CandidateIndex, relevant_assertions:&[usize],all_assertions:&[Assertion],num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound) -> Self {
+    pub fn new (parent_elimination_order_suffix:&[CandidateIndex], candidate_being_eliminated_at_this_node:CandidateIndex, relevant_assertions:&[usize],all_assertions:&[Assertion],num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound,timeout:&mut TimeOut) -> Result<Self,RaireError> {
+        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutTrimmingAssertions) }
         let mut elimination_order_suffix=vec![candidate_being_eliminated_at_this_node]; // elimination order including this node
         elimination_order_suffix.extend_from_slice(parent_elimination_order_suffix);
         let mut pruning_assertions : Vec<usize> = vec![];
@@ -47,7 +49,7 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
             for candidate in 0..num_candidates {
                 let candidate = CandidateIndex(candidate);
                 if !elimination_order_suffix.contains(&candidate) { // could make more efficient by using binary search,
-                    let child = TreeNodeShowingWhatAssertionsPrunedIt::new(&elimination_order_suffix,candidate,&still_relevant_assertions,all_assertions,num_candidates,next_consider_children_of_eliminated_nodes);
+                    let child = TreeNodeShowingWhatAssertionsPrunedIt::new(&elimination_order_suffix,candidate,&still_relevant_assertions,all_assertions,num_candidates,next_consider_children_of_eliminated_nodes,timeout)?;
                     if child.valid {
                         if pruning_assertions.is_empty() {
                             valid=true;
@@ -60,7 +62,7 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
                 }
             }
         }
-        TreeNodeShowingWhatAssertionsPrunedIt{candidate_being_eliminated_at_this_node,pruning_assertions,children,valid}
+        Ok(TreeNodeShowingWhatAssertionsPrunedIt{candidate_being_eliminated_at_this_node,pruning_assertions,children,valid})
     }
 }
 
@@ -97,7 +99,7 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
 ///
 /// consider_children_of_eliminated_nodes, if true, will take a little longer and possibly produce a smaller number of assertions
 /// at the cost of a larger tree size for the eliminated paths tree.
-pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound) -> Result<(),RaireError> {
+pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound,timeout:&mut TimeOut) -> Result<(),RaireError> {
     assertions.sort_unstable_by(|a,b|{
         // sort all NEBs before NENs,
         // sort NENs by length
@@ -124,7 +126,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     let mut trees = vec![];
     for candidate in 0..num_candidates {
         let candidate = CandidateIndex(candidate);
-        let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes);
+        let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
         if tree.valid!= (candidate==winner) { return Err(if candidate==winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
         if candidate!=winner {
             find_used.add_tree_forced(&tree);
@@ -132,7 +134,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
         }
     }
     for tree in trees {
-        find_used.add_tree_second_pass(&tree);
+        find_used.add_tree_second_pass(&tree,timeout)?;
     }
     find_used.finish_second_pass()?;
     let mut res = vec![];
@@ -140,7 +142,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
         if find_used.uses(index) { res.push(a); }
     }
     assertions.extend(res.drain(..));
-    println!(" Trimmed {} assertions down to {}",all_assertion_indices.len(),assertions.len());
+    // println!(" Trimmed {} assertions down to {}",all_assertion_indices.len(),assertions.len());
     Ok(())
 }
 
@@ -177,7 +179,8 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
             node.children.len()!=0 && node.children.iter().all(|c|self.node_already_eliminated(c))
         }
     }
-    fn add_tree_second_pass(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt) {
+    fn add_tree_second_pass(&mut self,node:&TreeNodeShowingWhatAssertionsPrunedIt,timeout:&mut TimeOut) -> Result<(),RaireError> {
+        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutTrimmingAssertions); }
         if node.pruning_assertions.len()>0 {
             //print!("{}",node.pruning_assertions.len());
             if !self.node_already_eliminated(node) { // not already solved by one assertion that rules out this node.
@@ -186,9 +189,10 @@ impl SimplisticWorkOutWhichAssertionsAreUsed {
             }
         } else {
             for child in &node.children {
-                self.add_tree_second_pass(child);
+                self.add_tree_second_pass(child,timeout)?;
             }
         }
+        Ok(())
     }
     fn finish_second_pass(&self)  -> Result<(),RaireError> {Ok(())}
 }
@@ -312,6 +316,7 @@ impl GetXDDVariable {
 mod tests {
     use crate::assertions::{Assertion, NotEliminatedBefore, NotEliminatedNext};
     use crate::irv::CandidateIndex;
+    use crate::timeout::TimeOut;
     use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
     fn raire_guide_assertions() -> Vec<Assertion> {
@@ -329,10 +334,13 @@ mod tests {
     fn it_works() {
         let all_assertions = raire_guide_assertions();
         let relevant_assertions : Vec<usize> = (0..all_assertions.len()).collect();
-        let tree0 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(0),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
-        let tree1 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(1),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
-        let tree2 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(2),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
-        let tree3 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(3),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately);
+        let mut timeout = TimeOut::new(Some(1000),None);
+        let mut timeout_instantly = TimeOut::new(Some(1),None);
+        assert!(TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(0),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout_instantly).is_err());
+        let tree0 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(0),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
+        let tree1 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(1),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
+        let tree2 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(2),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
+        let tree3 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(3),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
         assert_eq!(false,tree0.valid);
         assert_eq!(3,tree0.children.len());
         assert_eq!(vec![4],tree0.children[0].pruning_assertions);
