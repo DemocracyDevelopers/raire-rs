@@ -4,6 +4,9 @@ body {
 div.error, p.error {
     color : red;
 }
+div.warning, p.warning {
+    color : orange;
+}
 
 a.example {
     padding-right: 1em;

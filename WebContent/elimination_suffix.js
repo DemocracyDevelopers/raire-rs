@@ -567,6 +567,9 @@ function describe_raire_result(output_div,explanation_div,data) {
         return ids.map(candidate_name).join(",")
     }
     if (data.solution && data.solution.Ok) {
+        if (data.solution.Ok.warning_trim_timed_out) {
+            add(output_div,"p","warning").innerText="Warning : Trimming timed out. Some assertions may be redundant.";
+        }
         function describe_time(what,time_taken) {
             if (time_taken) {
                 let time_desc = time_taken.seconds>0.1?Number(time_taken.seconds).toFixed(1)+" seconds":Number(time_taken.seconds*1000).toFixed(2)+" milliseconds";
@@ -617,11 +620,11 @@ function describe_raire_result(output_div,explanation_div,data) {
     } else if (data.solution && data.solution.Err) {
         let err = data.solution.Err;
         if (err==="TimeoutCheckingWinner") {
-            add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small (0 or negative timeout is a bad idea)";
-        } else if (err==="TimeoutFindingAssertions") {
-            add(output_div,"p","error").innerText="Timeout finding assertions - your problem is quite hard";
-        } else if (err==="TimeoutTrimmingAssertions") {
-            add(output_div,"p","error").innerText="Timeout trimming assertions - you can probably get an answer with a simpler trimming algorithm";
+            add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small.";
+        } else if (err.hasOwnProperty("TimeoutFindingAssertions")) {
+            add(output_div,"p","error").innerText="Timeout finding assertions - your problem is quite hard. Difficulty when interrupted : "+err.TimeoutFindingAssertions;
+        } else if (err==="InvalidTimeout") {
+            add(output_div,"p","error").innerText="Timeout is not valid. Timeout should be a number greater than zero.";
         } else if (Array.isArray(err.CouldNotRuleOut)) {
             add(output_div,"p","error").innerText="Impossible to audit. Could not rule out the following elimination order:";
             for (let i=0;i<err.CouldNotRuleOut.length;i++) {

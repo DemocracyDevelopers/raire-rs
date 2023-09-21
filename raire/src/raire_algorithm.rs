@@ -22,6 +22,8 @@ use crate::RaireError;
 use crate::timeout::{TimeOut, TimeTaken};
 use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
+fn is_false(b:&bool) -> bool {!*b}
+
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct RaireResult {
     pub assertions : Vec<AssertionAndDifficulty>,
@@ -33,6 +35,8 @@ pub struct RaireResult {
     pub time_to_determine_winners : TimeTaken,
     pub time_to_find_assertions : TimeTaken,
     pub time_to_trim_assertions : TimeTaken,
+    #[serde(default,skip_serializing_if = "is_false")]
+    pub warning_trim_timed_out : bool,
 }
 
 impl RaireResult {
@@ -185,7 +189,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
     log::trace!("Created NEB cache");
     //println!("Calling raire with {} votes {} candidates winner {}",votes.total_votes(),votes.num_candidates(),winner);
     let mut assertions : Vec<AssertionAndDifficulty> = vec![]; // A in the original paper
-    let mut bound : AssertionDifficulty = 0.0; // LB in the original paper
+    let mut lower_bound: AssertionDifficulty = 0.0; // LB in the original paper. A lower bound on the difficulty of the problem.
     let mut frontier = BinaryHeap::new(); // F in the original paper
     let mut last_difficulty:f64 = f64::INFINITY;
     // Populate F with single-candidate sequences
@@ -202,13 +206,13 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
     }
     // Repeatedly expand the sequence with largest ASN in F
     while let Some(mut sequence_being_considered) = frontier.pop() { // 10-12
-        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutFindingAssertions)}
+        if timeout.quick_check_timeout() { return Err(RaireError::TimeoutFindingAssertions(sequence_being_considered.difficulty().max(lower_bound))) }
         if sequence_being_considered.difficulty()!=last_difficulty {
             last_difficulty=sequence_being_considered.difficulty();
-            log::trace!("Difficulty reduced to {}{}",last_difficulty,if last_difficulty<=bound {" OK"} else {""});
+            log::trace!("Difficulty reduced to {}{}",last_difficulty,if last_difficulty<= lower_bound {" OK"} else {""});
         }
         //println!("Considering {:?}",sequence_being_considered);
-        if sequence_being_considered.difficulty()<=bound { // may as well just include.
+        if sequence_being_considered.difficulty()<= lower_bound { // may as well just include.
             sequence_being_considered.just_take_assertion(&mut assertions,&mut frontier);
         } else {
             if USE_DIVING && !sequence_being_considered.dive_done.is_some() {
@@ -228,7 +232,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
                                 sequence_being_considered.extend_by_candidate(c,votes,audit,&neb_cache)
                             },
                         };
-                        if new_sequence.difficulty()<=bound {
+                        if new_sequence.difficulty()<= lower_bound {
                             new_sequence.just_take_assertion(&mut assertions,&mut frontier);
                             break;
                         } else {
@@ -238,7 +242,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
                 }
                 if let Some(last) = last {
                     assert_eq!(last.pi.len(),votes.num_candidates() as usize);
-                    last.contains_all_candidates(&mut assertions,&mut frontier,&mut bound)?;
+                    last.contains_all_candidates(&mut assertions,&mut frontier,&mut lower_bound)?;
                 }
             }
             for c in 0..votes.num_candidates() { // for each(c ∈ C \ π):
@@ -246,7 +250,7 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
                 if !(sequence_being_considered.pi.contains(&c)||sequence_being_considered.dive_done==Some(c)) {
                     let new_sequence = sequence_being_considered.extend_by_candidate(c,votes,audit,&neb_cache);
                     if new_sequence.pi.len()==votes.num_candidates() as usize { // 22 if (|π′| = |C|):
-                        new_sequence.contains_all_candidates(&mut assertions,&mut frontier,&mut bound)?;
+                        new_sequence.contains_all_candidates(&mut assertions,&mut frontier,&mut lower_bound)?;
                     } else {
                         frontier.push(new_sequence) // 31 F ← F ∪ {π ′ }
                     }
@@ -256,20 +260,16 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
         //println!("frontier now includes {} elements",frontier.len())
     }
     let time_to_find_assertions = timeout.time_taken()-time_to_determine_winners;
-    log::debug!("Finished generating {} assertions difficulty {}, now need to trim.",assertions.len(),bound);
-    match trim_algorithm {
-        TrimAlgorithm::None => {}
-        TrimAlgorithm::MinimizeTree => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,timeout)?;
-        }
-        TrimAlgorithm::MinimizeAssertions => {
-            crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever,timeout)?;
-        }
-    }
+    log::debug!("Finished generating {} assertions difficulty {}, now need to trim.",assertions.len(),lower_bound);
+    let warning_trim_timed_out = match crate::tree_showing_what_assertions_pruned_leaves::order_assertions_and_remove_unnecessary(&mut assertions,winner,votes.num_candidates(),trim_algorithm,timeout) {
+        Ok(_) => false,
+        Err(RaireError::TimeoutTrimmingAssertions) => true,
+        Err(e) => {return Err(e);}
+    };
     let time_to_trim_assertions = timeout.time_taken()-time_to_find_assertions-time_to_determine_winners;
     log::debug!("Trimmed assertions down to {}.",assertions.len());
     let margin = assertions.iter().map(|a|a.margin).min().unwrap_or(BallotPaperCount(0));
-    Ok(RaireResult{assertions, difficulty: bound , margin, winner,num_candidates:votes.num_candidates(), time_to_determine_winners, time_to_find_assertions, time_to_trim_assertions })
+    Ok(RaireResult{assertions, difficulty: lower_bound, margin, winner,num_candidates:votes.num_candidates(), time_to_determine_winners, time_to_find_assertions, time_to_trim_assertions, warning_trim_timed_out })
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]

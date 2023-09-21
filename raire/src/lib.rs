@@ -24,10 +24,13 @@ pub mod timeout;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
 pub enum RaireError {
+    #[error("time out limit should be greater than zero")]
+    InvalidTimeout,
     #[error("time out while checking all possible winners - this is a really nasty dataset")]
     TimeoutCheckingWinner,
-    #[error("time out while finding assertions")]
-    TimeoutFindingAssertions,
+    #[error("time out while finding assertions - difficulty at time of stopping {0}")]
+    TimeoutFindingAssertions(f64),
+    ///Timeout trimming assertions is used internally and is caught internally and replaced by a valid result but warning_trim_timed_out flag in the result.
     #[error("time out while trimming assertions - try rerunning with a faster trim algorithm.")]
     TimeoutTrimmingAssertions,
     /// An alternate winner is possible when there are ties. There may be tie resolution legislation
@@ -79,8 +82,14 @@ pub struct RaireSolution {
 impl RaireProblem {
     pub fn solve(self) -> RaireSolution {
         let votes = Votes::new(self.votes,self.num_candidates);
-        let mut timeout = timeout::TimeOut::new(None,self.time_limit_seconds.map(|seconds|Duration::from_secs_f64(seconds)));
-        let solution = raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree),&mut timeout);
+        let solution = {
+            if self.time_limit_seconds.is_some_and(|v|v<=0.0||v.is_nan()) {
+                Err(RaireError::InvalidTimeout)
+            } else {
+                let mut timeout = timeout::TimeOut::new(None,self.time_limit_seconds.map(|seconds|Duration::from_secs_f64(seconds)));
+                raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree),&mut timeout)
+            }
+        };
         RaireSolution{metadata:self.metadata,solution}
     }
 }

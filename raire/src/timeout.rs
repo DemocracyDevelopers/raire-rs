@@ -22,6 +22,9 @@ pub struct TimeOut {
     duration_limit : Option<Duration>,
 }
 
+/// In case the clock is expensive to check, only check every UNITS_OF_WORK_PER_CLOCK_CHECK units of work.
+const UNITS_OF_WORK_PER_CLOCK_CHECK : u64 = 100;
+
 impl TimeOut {
     /// Make a new timeout structure.
     pub fn new(work_limit : Option<u64>,duration_limit : Option<Duration>) -> Self {
@@ -50,7 +53,7 @@ impl TimeOut {
             if self.work_done>work_limit { return true; }
         }
         if let Some(duration_limit) = self.duration_limit {
-            if self.clock_time_taken_since_start()>duration_limit { return true; }
+            if self.work_done%UNITS_OF_WORK_PER_CLOCK_CHECK==0 && self.clock_time_taken_since_start()>duration_limit { return true; }
         }
         false
     }

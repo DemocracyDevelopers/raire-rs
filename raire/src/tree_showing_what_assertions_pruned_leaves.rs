@@ -10,6 +10,7 @@
 use std::cmp::Ordering;
 use crate::assertions::{Assertion, AssertionAndDifficulty, EffectOfAssertionOnEliminationOrderSuffix};
 use crate::irv::CandidateIndex;
+use crate::raire_algorithm::TrimAlgorithm;
 use crate::RaireError;
 use crate::timeout::TimeOut;
 
@@ -99,7 +100,10 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
 ///
 /// consider_children_of_eliminated_nodes, if true, will take a little longer and possibly produce a smaller number of assertions
 /// at the cost of a larger tree size for the eliminated paths tree.
-pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,consider_children_of_eliminated_nodes:HowFarToContinueSearchTreeWhenPruningAssertionFound,timeout:&mut TimeOut) -> Result<(),RaireError> {
+///
+/// Note that if a timeout error is produced, the assertions array will be sorted but otherwise unchanged
+/// from the original call.
+pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,trim_algorithm:TrimAlgorithm,timeout:&mut TimeOut) -> Result<(),RaireError> {
     assertions.sort_unstable_by(|a,b|{
         // sort all NEBs before NENs,
         // sort NENs by length
@@ -120,29 +124,35 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
             (Assertion::NEB(a), Assertion::NEB(b)) => a.winner.0.cmp(&b.winner.0).then_with(||a.loser.0.cmp(&b.loser.0)),
         }
     });
-    let all_assertions : Vec<Assertion> = assertions.iter().map(|ad|ad.assertion.clone()).collect();
-    let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
-    let mut find_used = SimplisticWorkOutWhichAssertionsAreUsed::new(assertions.len());
-    let mut trees = vec![];
-    for candidate in 0..num_candidates {
-        let candidate = CandidateIndex(candidate);
-        let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
-        if tree.valid!= (candidate==winner) { return Err(if candidate==winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
-        if candidate!=winner {
-            find_used.add_tree_forced(&tree);
-            trees.push(tree);
+    if let Some(consider_children_of_eliminated_nodes) = match trim_algorithm {
+        TrimAlgorithm::None => None,
+        TrimAlgorithm::MinimizeTree => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately),
+        TrimAlgorithm::MinimizeAssertions => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever),
+    } { // do the actual trimming
+        let all_assertions : Vec<Assertion> = assertions.iter().map(|ad|ad.assertion.clone()).collect();
+        let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
+        let mut find_used = SimplisticWorkOutWhichAssertionsAreUsed::new(assertions.len());
+        let mut trees = vec![];
+        for candidate in 0..num_candidates {
+            let candidate = CandidateIndex(candidate);
+            let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
+            if tree.valid!= (candidate==winner) { return Err(if candidate==winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
+            if candidate!=winner {
+                find_used.add_tree_forced(&tree);
+                trees.push(tree);
+            }
         }
+        for tree in trees {
+            find_used.add_tree_second_pass(&tree,timeout)?;
+        }
+        find_used.finish_second_pass()?;
+        let mut res = vec![];
+        for (index,a) in assertions.drain(..).enumerate() {
+            if find_used.uses(index) { res.push(a); }
+        }
+        assertions.extend(res.drain(..));
+        // println!(" Trimmed {} assertions down to {}",all_assertion_indices.len(),assertions.len());
     }
-    for tree in trees {
-        find_used.add_tree_second_pass(&tree,timeout)?;
-    }
-    find_used.finish_second_pass()?;
-    let mut res = vec![];
-    for (index,a) in assertions.drain(..).enumerate() {
-        if find_used.uses(index) { res.push(a); }
-    }
-    assertions.extend(res.drain(..));
-    // println!(" Trimmed {} assertions down to {}",all_assertion_indices.len(),assertions.len());
     Ok(())
 }
 

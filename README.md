@@ -108,7 +108,9 @@ The input is JSON, with a single object containing the following fields:
   can set this number, and it will take it to be a lower bound on the difficulty of the problem. This could potentially make the algorithm 
   faster. This is probably not useful in practice, but is useful for performance testing and algorithm experimentation. In practice, the
   heuristics seem to usually do a good enough job of finding the optimum value that this doesn't help much even if you have a magic oracle.
-  
+* `time_limit_seconds` : Optional positive number limiting the number of seconds that are spent on the algorithm. This time will be somewhat infrequently checked,
+  so don't expect this to be accurate to milliseconds.
+
 # JSON output format
 
 The output is JSON with two fields:
@@ -130,6 +132,15 @@ The output is JSON with two fields:
     * `margin` : an integer indicating the smallest margin of the audit. This is the minimum of the margins in the assertions array.
     * `winner` : The index of the candidate who won - an integer between `0` and `num_candidates-1`. 
     * `num_candidates` : The number of candidates (an integer).
+    * `warning_trim_timed_out` : If present (and true), then the algorithm successfully found some assertions but was unable
+      to do the desired trimming in the time limit provided. Instead the untrimmed assertions are returned. Some of them
+      may be redundant.
+    * `time_to_determine_winners`, `time_to_find_assertions`, and `time_to_trim_assertions` : Objects describing how long
+      each stage of the algorithm took. Fields are:
+      * `seconds` : The number of seconds taken at this stage.
+      * `work` : An integer indicating the number of steps taken in this stage. For finding winners, it is states in the elimination
+        order. For finding assertions, it is the number of elements passing through the priority queue. For trimming, it is the 
+        number of nodes of the tree searched (some may be searched twice).
 
 # What if I don't trust it?
 
