@@ -7,6 +7,8 @@
 // raire-rs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 // You should have received a copy of the GNU Affero General Public License along with ConcreteSTV.  If not, see <https://www.gnu.org/licenses/>.
 
+#![doc = include_str!("../AssertionTrimmingAlgorithm.md")]
+
 use std::cmp::Ordering;
 use crate::assertions::{Assertion, AssertionAndDifficulty, EffectOfAssertionOnEliminationOrderSuffix};
 use crate::irv::CandidateIndex;
@@ -93,6 +95,7 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
     }
 }
 
+
 /// Change the list of assertions to order them with the first removing the most undesired elimination orders,
 /// the second removing the most of what is left, etc.
 ///
@@ -103,6 +106,8 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
 ///
 /// Note that if a timeout error is produced, the assertions array will be sorted but otherwise unchanged
 /// from the original call.
+///
+/// The algorithm is described in [../AssertionTrimmingAlgorithm.md]
 pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndDifficulty>,winner:CandidateIndex,num_candidates:u32,trim_algorithm:TrimAlgorithm,timeout:&mut TimeOut) -> Result<(),RaireError> {
     assertions.sort_unstable_by(|a,b|{
         // sort all NEBs before NENs,
