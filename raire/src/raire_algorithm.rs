@@ -314,4 +314,5 @@ pub enum TrimAlgorithm {
     MinimizeTree,
     /// Expand the tree until all all assertions are resolved, and remove redundant assertions with a simple heuristic. Minimizes the number of assertions, but may increase the size of the tree to verify.
     MinimizeAssertions,
+    MinimizeAssertions2,
 }

@@ -22,6 +22,7 @@ use raire::RaireProblem;
 use raire::timeout::TimeOut;
 
 pub struct Contest {
+    pub file_name_stem : String,
     pub num_candidates : usize,
     pub id : String,
     pub candidate_names : Vec<String>,
@@ -32,6 +33,7 @@ pub struct Contest {
 
 impl Contest {
     pub fn parse<P: AsRef<Path>>(path:P) -> anyhow::Result<Vec<Contest>> {
+        let file_name_stem = path.as_ref().file_name().and_then(|s|s.to_str()).unwrap_or_default().trim_end_matches(".raire").to_string();
         let mut lines = BufReader::new(File::open(path)?).lines();
         // first line is number of contests
         let num_contests : usize = lines.next().ok_or_else(||anyhow!("No number of contests on first line"))??.parse()?;
@@ -48,7 +50,7 @@ impl Contest {
                 fields[3..(3+num_candidates)].iter().map(|s|s.to_string()).collect()
             } else { return Err(anyhow!("Candidate ids missing")); };
             let candidate_name_to_index : HashMap<String,CandidateIndex> = candidate_names.iter().enumerate().map(|(n,name)|(name.clone(),CandidateIndex(n as u32))).collect();
-            res.push(Contest{num_candidates,id,candidate_names,candidate_name_to_index,votes:Default::default()});
+            res.push(Contest{ file_name_stem:file_name_stem.clone(), num_candidates,id,candidate_names,candidate_name_to_index,votes:Default::default()});
         }
         // rest of lines are contest,ballot_id,candidates (starting from 1)
         for line in lines {
@@ -77,7 +79,7 @@ impl Contest {
         let winners = votes.run_election(&mut TimeOut::never())?;
         if winners.possible_winners.len()!=1 { return Err(anyhow!("RAIRE only works if there is one possible winner."))}
         let winner = winners.possible_winners[0];
-        let metadata = json!({"candidates":self.candidate_names,"contest":self.id.clone()});
+        let metadata = json!({"candidates":self.candidate_names,"contest":format!("{} {}",self.file_name_stem,self.id)});
         Ok(RaireProblem{
             metadata,
             num_candidates: self.num_candidates,

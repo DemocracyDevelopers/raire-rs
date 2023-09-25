@@ -15,9 +15,12 @@ use raire::audit_type::{Audit, BallotComparisonOneOnDilutedMargin};
 use raire::irv::BallotPaperCount;
 use raire::raire_algorithm::TrimAlgorithm;
 use utilities::parse_michelle_format::Contest;
+use utilities::table_of_results::TableOfResults;
 
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_default_env().format_timestamp_millis().filter_level(log::LevelFilter::Trace).init();
+    let mut summary = TableOfResults::default();
+    let mut summaries = vec![TableOfResults::default(),TableOfResults::default(),TableOfResults::default(),TableOfResults::default()];
     let folder = "../audit-irv-cp-raire-branch/USIRV/";
     for entry in std::fs::read_dir(folder)? {
         let entry = entry?;
@@ -27,7 +30,12 @@ fn main() -> anyhow::Result<()> {
                 let contest = &contests[contest_index];
                 let num_ballots : usize = contest.votes.values().sum();
                 let mut problem = contests[contest_index].to_raire_problem(Audit::OneOnMargin(BallotComparisonOneOnDilutedMargin{total_auditable_ballots:BallotPaperCount(num_ballots)}))?;
-                problem.trim_algorithm=Some(TrimAlgorithm::MinimizeAssertions);
+                for (trim,table) in vec![TrimAlgorithm::None,TrimAlgorithm::MinimizeTree,TrimAlgorithm::MinimizeAssertions2,TrimAlgorithm::MinimizeAssertions].into_iter().zip(summaries.iter_mut()) {
+                    let mut problem = problem.clone();
+                    problem.trim_algorithm=Some(trim);
+                    table.push(problem.solve());
+                }
+                problem.trim_algorithm=Some(TrimAlgorithm::MinimizeAssertions2);
                 println!("{} contest {} with {} candidates {} ballots of which {} are distinct",entry.file_name().to_string_lossy(),contest_index+1,problem.num_candidates,num_ballots,problem.votes.len());
                 let time_start = SystemTime::now();
                 let solution = problem.solve();
@@ -41,8 +49,12 @@ fn main() -> anyhow::Result<()> {
                         println!("Could not solve in {:?} reason {}",time_taken,error);
                     }
                 }
+                summary.push(solution);
             }
         }
     }
+    summary.print();
+    println!();
+    TableOfResults::compare_trims(&summaries);
     Ok(())
 }

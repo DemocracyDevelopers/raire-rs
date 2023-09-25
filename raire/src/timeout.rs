@@ -62,8 +62,8 @@ impl TimeOut {
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]
 /// A measure of the time taken to do something.
 pub struct TimeTaken {
-    work : u64,
-    seconds : f64,
+    pub work : u64,
+    pub seconds : f64,
 }
 
 impl Sub for TimeTaken {
@@ -71,6 +71,13 @@ impl Sub for TimeTaken {
 
     fn sub(self, rhs: Self) -> Self::Output {
         TimeTaken{work:self.work-rhs.work,seconds:self.seconds-rhs.seconds}
+    }
+}
+
+impl TimeTaken {
+    pub fn pretty_print(&self) -> String {
+        let duration = Duration::from_secs_f64(self.seconds);
+        format!("{:?}",duration)
     }
 }
 

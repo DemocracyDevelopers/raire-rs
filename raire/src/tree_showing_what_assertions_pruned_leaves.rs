@@ -47,7 +47,8 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
         }
         let mut children : Vec<Self> = vec![];
         let mut valid : bool = pruning_assertions.is_empty() && still_relevant_assertions.is_empty();
-        if (pruning_assertions.is_empty()||consider_children_of_eliminated_nodes.should_continue_if_pruning_assertion_found()) && !still_relevant_assertions.is_empty() {
+        let pruned_by_neb = pruning_assertions.iter().any(|a|all_assertions[*a].is_neb());
+        if (pruning_assertions.is_empty()||consider_children_of_eliminated_nodes.should_continue_if_pruning_assertion_found(pruned_by_neb)) && !still_relevant_assertions.is_empty() {
             let next_consider_children_of_eliminated_nodes = if pruning_assertions.is_empty() { consider_children_of_eliminated_nodes } else { consider_children_of_eliminated_nodes.next_level_if_pruning_assertion_found() };
             for candidate in 0..num_candidates {
                 let candidate = CandidateIndex(candidate);
@@ -77,12 +78,14 @@ pub enum HowFarToContinueSearchTreeWhenPruningAssertionFound {
     ContinueOnce,
     /// When a pruning assertion is found, continue. Don't stop unless no assertions left.
     Forever,
+    StopOnNEB,
 }
 
 impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
-    fn should_continue_if_pruning_assertion_found(self) -> bool {
+    fn should_continue_if_pruning_assertion_found(self,pruned_by_neb:bool) -> bool {
         match self {
             Self::StopImmediately => false,
+            Self::StopOnNEB => !pruned_by_neb,
             _ => true,
         }
     }
@@ -91,6 +94,7 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
             Self::StopImmediately => Self::StopImmediately, // should never happen.
             Self::ContinueOnce => Self::StopImmediately,
             Self::Forever => Self::Forever,
+            Self::StopOnNEB => Self::StopOnNEB,
         }
     }
 }
@@ -133,6 +137,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
         TrimAlgorithm::None => None,
         TrimAlgorithm::MinimizeTree => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately),
         TrimAlgorithm::MinimizeAssertions => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever),
+        TrimAlgorithm::MinimizeAssertions2 => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopOnNEB),
     } { // do the actual trimming
         let all_assertions : Vec<Assertion> = assertions.iter().map(|ad|ad.assertion.clone()).collect();
         let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();

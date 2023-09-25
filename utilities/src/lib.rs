@@ -8,3 +8,4 @@
 // You should have received a copy of the GNU Affero General Public License along with ConcreteSTV.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod parse_michelle_format;
+pub mod table_of_results;

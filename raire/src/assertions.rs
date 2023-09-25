@@ -243,6 +243,15 @@ pub enum Assertion {
     NEN(NotEliminatedNext),
 }
 
+impl Assertion {
+    pub fn is_neb(&self) -> bool {
+        match self {
+            Assertion::NEB(_) => true,
+            Assertion::NEN(_) => false,
+        }
+    }
+}
+
 #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
 pub struct AssertionAndDifficulty {
     pub assertion : Assertion,
