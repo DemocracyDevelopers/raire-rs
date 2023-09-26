@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
                 let contest = &contests[contest_index];
                 let num_ballots : usize = contest.votes.values().sum();
                 let mut problem = contests[contest_index].to_raire_problem(Audit::OneOnMargin(BallotComparisonOneOnDilutedMargin{total_auditable_ballots:BallotPaperCount(num_ballots)}))?;
-                for (trim,table) in vec![TrimAlgorithm::None,TrimAlgorithm::MinimizeTree,TrimAlgorithm::MinimizeAssertions2,TrimAlgorithm::MinimizeAssertions].into_iter().zip(summaries.iter_mut()) {
+                for (trim,table) in vec![TrimAlgorithm::None,TrimAlgorithm::MinimizeTree,TrimAlgorithm::MinimizeAssertions].into_iter().zip(summaries.iter_mut()) {
                     let mut problem = problem.clone();
                     problem.trim_algorithm=Some(trim);
                     table.push(problem.solve());

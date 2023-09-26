@@ -136,8 +136,7 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     if let Some(consider_children_of_eliminated_nodes) = match trim_algorithm {
         TrimAlgorithm::None => None,
         TrimAlgorithm::MinimizeTree => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately),
-        TrimAlgorithm::MinimizeAssertions => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever),
-        TrimAlgorithm::MinimizeAssertions2 => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopOnNEB),
+        TrimAlgorithm::MinimizeAssertions => Some(HowFarToContinueSearchTreeWhenPruningAssertionFound::StopOnNEB),
     } { // do the actual trimming
         let all_assertions : Vec<Assertion> = assertions.iter().map(|ad|ad.assertion.clone()).collect();
         let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();

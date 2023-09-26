@@ -48,12 +48,12 @@ impl TableOfResults {
     /// Compare trim effects for different trim algorithms
     pub fn compare_trims(algorithms:&[TableOfResults]) {
         for line_index in 0..algorithms[0].results.len() {
-            print!("{}\t",algorithms[0].results[line_index].name);
+            print!("{}\t{}\t{}\t",algorithms[0].results[line_index].name,algorithms[0].results[line_index].solution.solution.as_ref().map(|s|s.num_candidates.to_string()).unwrap_or_default(),algorithms[0].results[line_index].solution.solution.as_ref().map(|s|s.time_to_find_assertions.pretty_print()).unwrap_or_default());
             for a in algorithms {
-                print!("{}\t",a.results[line_index].solution.solution.as_ref().map(|s|s.assertions.len().to_string()).unwrap_or_default());
+                print!("{}\t",a.results[line_index].solution.solution.as_ref().map(|s|if s.warning_trim_timed_out {"".to_string()} else {s.assertions.len().to_string()}).unwrap_or_default());
             }
             for a in algorithms {
-                print!("{}\t",a.results[line_index].solution.solution.as_ref().map(|s|s.time_to_trim_assertions.pretty_print()).unwrap_or_default());
+                print!("{}\t",a.results[line_index].solution.solution.as_ref().map(|s|if s.warning_trim_timed_out {"".to_string()} else {s.time_to_trim_assertions.pretty_print()}).unwrap_or_default());
             }
             println!();
         }

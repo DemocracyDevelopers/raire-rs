@@ -312,7 +312,6 @@ pub enum TrimAlgorithm {
     None,
     /// Expand the tree until an assertion rules the path out, removing redundant assertions with a simple heuristic. Minimizes size of tree for human to verify, but may have unnecessary assertions.
     MinimizeTree,
-    /// Expand the tree until all all assertions are resolved, and remove redundant assertions with a simple heuristic. Minimizes the number of assertions, but may increase the size of the tree to verify.
+    /// Expand the tree until all all assertions are resolved or an NEB rules the path out, and remove redundant assertions with a simple heuristic. Minimizes the number of assertions, but may increase the size of the tree to verify.
     MinimizeAssertions,
-    MinimizeAssertions2,
 }
