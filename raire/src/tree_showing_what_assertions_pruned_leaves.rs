@@ -99,6 +99,11 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
     }
 }
 
+/// When trimming, it is possible to also compute the boundary for the winning candidate,
+/// and check that that is not trimmed. This is a nice consistency check. However, the
+/// computation of the boundary for the winning candidate is often vastly more expensive than
+/// the rest of the computation. So it is not enabled.
+const CHECK_WINNER_NOT_ELIMINATED:bool=false;
 
 /// Change the list of assertions to order them with the first removing the most undesired elimination orders,
 /// the second removing the most of what is left, etc.
@@ -144,11 +149,13 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
         let mut trees = vec![];
         for candidate in 0..num_candidates {
             let candidate = CandidateIndex(candidate);
-            let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
-            if tree.valid!= (candidate==winner) { return Err(if candidate==winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
-            if candidate!=winner {
-                find_used.add_tree_forced(&tree);
-                trees.push(tree);
+            if candidate!=winner || CHECK_WINNER_NOT_ELIMINATED {
+                let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
+                if tree.valid!= (candidate==winner) { return Err(if candidate==winner { RaireError::InternalErrorRuledOutWinner} else { RaireError::InternalErrorDidntRuleOutLoser })}
+                if candidate!=winner {
+                    find_used.add_tree_forced(&tree);
+                    trees.push(tree);
+                }
             }
         }
         for tree in trees {
