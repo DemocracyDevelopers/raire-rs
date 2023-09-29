@@ -269,6 +269,13 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
     let time_to_trim_assertions = timeout.time_taken()-time_to_find_assertions-time_to_determine_winners;
     log::debug!("Trimmed assertions down to {}.",assertions.len());
     let margin = assertions.iter().map(|a|a.margin).min().unwrap_or(BallotPaperCount(0));
+    // simple fast consistency check - make sure that the ostensible elimination order is consistent with all the assertions. If so, then the winner is not ruled out, and all is good.
+    for a in &assertions {
+        match a.assertion.ok_elimination_order_suffix(&irv_result.elimination_order) {
+            EffectOfAssertionOnEliminationOrderSuffix::Ok => {}
+            _ => { return Err(RaireError::InternalErrorRuledOutWinner); }
+        }
+    }
     Ok(RaireResult{assertions, difficulty: lower_bound, margin, winner,num_candidates:votes.num_candidates(), time_to_determine_winners, time_to_find_assertions, time_to_trim_assertions, warning_trim_timed_out })
 }
 
