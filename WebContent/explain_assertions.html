@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="common.css">
     <script src="util.js"></script>
     <script src="prettyprint_assertions_and_pictures.js"></script>
+    <script src="download_images.js"></script>
     <script src="explain_assertions.js"></script>
     <title>Explain Assertions</title>
 </head>
@@ -68,7 +69,7 @@
 
 <h3>Explanation of why it works</h3>
 <input type="checkbox" id="ShowEffectOfEachAssertionSeparately"/><label for="ShowEffectOfEachAssertionSeparately">Show effect of each assertion sequentially (can be slow)</label><br/>
-<input type="checkbox" id="HideWinner"/><label for="HideWinner">Don't bother drawing the (technically unnecessary) trees for the winning candidate.</label><br/>
+<input type="checkbox" id="HideWinner" checked="checked"/><label for="HideWinner">Don't bother drawing the (technically unnecessary) trees for the winning candidate.</label><br/>
 <div id="IfShowEffectOfEachAssertionSeparately">
     <input type="checkbox" id="ExpandAtStart"/><label for="ExpandAtStart">Expand fully all elimination orders at start</label><br/>
     <input type="checkbox" id="DrawAsText"/><label for="ExpandAtStart">Draw as text rather than trees</label><br/>

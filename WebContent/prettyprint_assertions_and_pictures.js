@@ -324,7 +324,7 @@ function make_trees(elimination_orders,after_applying_assertion_elimination_orde
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
  */
-function draw_trees_as_text(div,elimination_orders,candidate_names,assertion) {
+function draw_trees_as_text(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description) {
     for (const eo of elimination_orders) {
         const line = add(div,"div");
         if (eo.length<candidate_names.length) add(line,"span").innerText="...<";
@@ -358,9 +358,10 @@ function drawWinnerOrLoserSymbol(where,cx,cy,candidateClass,node_radius) {
  * @param {Element} div The DOM element where things should be inserted
  * @param {EliminationTreeNode} tree
  * @param {string[]} candidate_names : a list of the candidate names
+ * @param {string} image_name : a file name for downloading the image
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
  **/
-function draw_svg_tree(div,tree,candidate_names,assertion) {
+function draw_svg_tree(div,tree,candidate_names,image_name,assertion) {
     //console.log(tree);
     computeWidthsForTreeNode(tree,0);
     let nodes_wide = tree.width;
@@ -370,6 +371,7 @@ function draw_svg_tree(div,tree,candidate_names,assertion) {
     const pixels_per_node_y = 50;
     const node_radius = 5;
     let svg = addSVG(div,"svg");
+    allImages.push({svg:svg,name:image_name});
     let names = addSVG(svg,"g");
     let lines = addSVG(svg,"g");
     let nodes = addSVG(svg,"g");
@@ -489,12 +491,13 @@ function candidate_class(candidate,assertion) {
  * @param {number[][]} elimination_orders A list of still valid elimination orders
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
- * @param {number[][]} [elimination_orders] A list of still valid elimination orders after the assertion above is applied. Used for coloring
+ * @param {number[][]} [after_applying_assertion_elimination_orders] A list of still valid elimination orders after the assertion above is applied. Used for coloring
+ * @param description A text description of why these trees are being shown suitable for a file name
  */
-function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders) {
+function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description) {
     let trees = make_trees(elimination_orders,after_applying_assertion_elimination_orders);
     for (const tree of trees) {
-        draw_svg_tree(div,tree,candidate_names,assertion);
+        draw_svg_tree(div,tree,candidate_names,"Possible methods for "+candidate_names[tree.body]+" to win "+description,assertion);
     }
 }
 
@@ -513,7 +516,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
     //console.log(candidate_names);
     //console.log(assertions);
     const show_separately = document.getElementById("ShowEffectOfEachAssertionSeparately").checked;
-
+    allImages=[];
     if (show_separately) {
         // Explain the elimination method.
         add(div,"h3").innerText="Demonstration by progressive elimination"
@@ -523,7 +526,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             elimination_orders=elimination_orders.filter(order=>order[order.length-1]!==winner_id);
         }
         add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
-        draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
+        draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"at start");
         for (const assertion of assertions) {
             const assertionHeading = add(div,"h4","assertion_name");
             assertionHeading.append("Assertion : ");
@@ -531,10 +534,10 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             elimination_orders = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,true);
             const elimination_orders_after = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,false);
             add(div,"h5","explanation_text").innerText="Evaluate assertion, expanding paths if necessary";
-            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after);
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after,"before applying "+assertion_description(assertion,candidate_names));
             elimination_orders = elimination_orders_after;
             add(div,"h5","explanation_text").innerText="After applying assertion";
-            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names);
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"after applying "+assertion_description(assertion,candidate_names));
         }
     } else {
         // Explain the elimination method.
@@ -543,10 +546,12 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             if (hide_winner && candidate===winner_id) continue;
             const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
             add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
-            draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,null);
+            draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,"Elimination tree for "+candidate_names[candidate],null);
         }
     }
-
+    let save_images_button = add(div,"button");
+    save_images_button.textContent="Save all images";
+    save_images_button.addEventListener('click', saveAllImages);
 }
 
 function checkOptionVisibility() {
