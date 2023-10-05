@@ -18,7 +18,7 @@ use raire::raire_algorithm::{raire, TrimAlgorithm};
 use raire::timeout::TimeOut;
 
 /// Get the votes in table 1.
-fn get_votes() -> Votes {
+fn get_votes_in_table1() -> Votes {
     let c1 = CandidateIndex(0);
     let c2 = CandidateIndex(1);
     let c3 = CandidateIndex(2);
@@ -102,7 +102,7 @@ const MACRO_EG12 : BallotComparisonMACRO = BallotComparisonMACRO{ confidence: 0.
 #[test]
 /// Test the get_votes() function and the methods on the Votes object.
 fn test_votes_structure() {
-    let votes = get_votes();
+    let votes = get_votes_in_table1();
     assert_eq!(BallotPaperCount(60000),votes.total_votes());
     assert_eq!(BallotPaperCount(26000),votes.first_preference_only_tally(CandidateIndex(0)));
     assert_eq!(BallotPaperCount(10000),votes.first_preference_only_tally(CandidateIndex(1)));
@@ -115,7 +115,7 @@ fn test_votes_structure() {
 #[test]
 /// Check the final ASN for example 2 in the paper
 fn test_example2() {
-    let votes = get_votes();
+    let votes = get_votes_in_table1();
     let assertion = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(2),CandidateIndex(3)], losers: vec![CandidateIndex(2)] };
     let asn = assertion.difficulty(&votes, &BRAVO_EG1);
     println!("Example 2 : ASN={}",asn);
@@ -126,7 +126,7 @@ fn test_example2() {
 #[test]
 /// Check the final ASN for example 3 in the paper
 fn test_example3() {
-    let votes = get_votes();
+    let votes = get_votes_in_table1();
     let assertion = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(2),CandidateIndex(3)], losers: vec![CandidateIndex(2)] };
     let asn = assertion.difficulty(&votes, &MACRO);
     println!("Example 3 : ASN={}",asn);
@@ -136,7 +136,7 @@ fn test_example3() {
 #[test]
 /// Check the ASNs for example 4 in the paper
 fn test_example4() {
-    let votes = get_votes();
+    let votes = get_votes_in_table1();
     let assertion1 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(2),CandidateIndex(3)], losers: vec![CandidateIndex(2)] };
     let assertion2 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(3)], losers: vec![CandidateIndex(1)] };
     let assertion3 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(3)], losers: vec![CandidateIndex(0)] };
@@ -169,7 +169,7 @@ fn test_example5() {
 #[test]
 /// Check the ASNs for example 4 in the paper
 fn test_example6() {
-    let votes = get_votes();
+    let votes = get_votes_in_table1();
     let assertion1 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(2),CandidateIndex(3)], losers: vec![CandidateIndex(2)] };
     let assertion2 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(3)], losers: vec![CandidateIndex(1)] };
     let assertion3 = SpecificLoserAmongstContinuing{ continuing: vec![CandidateIndex(0),CandidateIndex(3)], losers: vec![CandidateIndex(0)] };
@@ -233,14 +233,14 @@ fn test_example10() {
     let assertion2 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(2) };
     let asn1 = assertion1.difficulty(&votes, &BRAVO_EG5).0;
     let asn2 = assertion2.difficulty(&votes, &BRAVO_EG5).0;
-    println!("Example 7 : ASN1={asn1} ASN2={asn2} ");
+    println!("Example 10 : ASN1={asn1} ASN2={asn2} ");
     assert!((asn1-135.3).abs()<0.1);
     assert!((asn2-135.2).abs()<0.1);
     // what happens if you only count the continuing ballots
     // TODO fix paper draft
     let asn1 = BRAVO_EG1.bravo_function(BallotPaperCount(10000),BallotPaperCount(6000),BallotPaperCount(16000));
     let asn2 = BRAVO_EG1.bravo_function(BallotPaperCount(10000),BallotPaperCount(5999),BallotPaperCount(15999));
-    println!("Example 7 using only continuing ballots : ASN1={asn1} ASN2={asn2} ");
+    println!("Example 10 using only continuing ballots : ASN1={asn1} ASN2={asn2} ");
     assert!((asn1-98.4).abs()<0.1);
     assert!((asn2-98.3).abs()<0.1);
 
@@ -256,7 +256,7 @@ fn test_example11() {
     let assertion2 = NotEliminatedBefore { winner:CandidateIndex(0), loser: CandidateIndex(2) };
     let asn1 = assertion1.difficulty(&votes, &MACRO_EG5).0;
     let asn2 = assertion2.difficulty(&votes, &MACRO_EG5).0;
-    println!("Example 7 : ASN1={asn1} ASN2={asn2} ");
+    println!("Example 11 : ASN1={asn1} ASN2={asn2} ");
     assert!((asn1-36.2).abs()<0.1);
     assert!((asn2-36.2).abs()<0.1);
 }

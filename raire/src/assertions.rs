@@ -39,6 +39,7 @@ impl NotEliminatedBefore {
         (difficulty,if tally_winner>=tally_loser {tally_winner-tally_loser} else {BallotPaperCount(0)})
     }
 
+    /// Find the NEB assertion that best rules out the given candidate being the next eliminated, with later_in_pi being the other continuing candidates.
     pub fn find_best_assertion<A:AuditType>(c:CandidateIndex, later_in_pi:&[CandidateIndex], votes:&Votes, audit:&A) -> Option<AssertionAndDifficulty> {
         let mut best_difficulty = f64::MAX;
         let mut best_assertion : Option<NotEliminatedBefore> = None;
@@ -66,6 +67,7 @@ impl NotEliminatedBefore {
         } else {None}
     }
 
+    /// Find the NEB assertion that best rules out the given candidate being the next eliminated, with later_in_pi being the other continuing candidates.
     pub fn find_best_assertion_using_cache(c:CandidateIndex, later_in_pi:&[CandidateIndex],votes:&Votes,cache:&NotEliminatedBeforeCache) -> Option<AssertionAndDifficulty> {
         let mut best_difficulty = f64::MAX;
         let mut best_assertion : Option<NotEliminatedBefore> = None;
@@ -275,6 +277,7 @@ impl Assertion {
     ///  * let it through if it is allowed,
     ///  * block if it is contradicted,
     ///  * expand if it is not enough information.
+    /// Note this is not very efficient; you would only want to use this for tests.
     pub fn allowed_suffixes(&self,elimination_order_suffix:EliminationOrderSuffix,num_candidates:u32) -> Vec<EliminationOrderSuffix> {
         match self.ok_elimination_order_suffix(&elimination_order_suffix) {
             EffectOfAssertionOnEliminationOrderSuffix::Contradiction => vec![],

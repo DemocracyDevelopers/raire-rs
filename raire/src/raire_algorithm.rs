@@ -48,6 +48,7 @@ impl RaireResult {
         elimination_orders
     }
 
+    /// Note this is not very efficient; you would only want to use this for tests.
     pub fn possible_elimination_order_suffixes_allowed_by_assertions(&self,num_candidates:u32) -> Vec<EliminationOrder> {
         let mut elimination_orders : Vec<EliminationOrderSuffix> = vec![vec![]]; // start off with the minimal set.
         for a in &self.assertions {
