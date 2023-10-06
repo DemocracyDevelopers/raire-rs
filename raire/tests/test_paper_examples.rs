@@ -79,7 +79,7 @@ fn get_votes_for_example12() -> Votes {
         Vote{ n: BallotPaperCount(5000), prefs: vec![c2,c3,c1]},
         Vote{ n: BallotPaperCount(1500), prefs: vec![c2,c1,c3]},
         Vote{ n: BallotPaperCount(5000), prefs: vec![c3,c2,c1]},
-        Vote{ n: BallotPaperCount( 500), prefs: vec![c3,c1,c1]},
+        Vote{ n: BallotPaperCount( 500), prefs: vec![c3,c1,c2]},
         Vote{ n: BallotPaperCount(5000), prefs: vec![c4,c1]},
     ];
     Votes::new(votes, 4)
@@ -277,12 +277,12 @@ fn test_example12_asns() {
     let asn2 = assertion2.difficulty(&votes, &BRAVO_EG12);
     let asn3 = assertion3.difficulty(&votes, &BRAVO_EG12).0;
     let asn4 = assertion4.difficulty(&votes, &BRAVO_EG12);
-    println!("Example 7 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4}");
+    println!("Example 12 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4}");
     let asn1p = 100.0*asn1/votes.total_votes().0 as f64;
     let asn2p = 100.0*asn2/votes.total_votes().0 as f64;
     let asn3p = 100.0*asn3/votes.total_votes().0 as f64;
     let asn4p = 100.0*asn4/votes.total_votes().0 as f64;
-    println!("Example 7 percentages : ASN1={asn1p}% ASN2={asn2p}%  ASN3={asn3p}%  ASN4={asn4p}%");
+    println!("Example 12 percentages : ASN1={asn1p}% ASN2={asn2p}%  ASN3={asn3p}%  ASN4={asn4p}%");
     assert!((asn1p-1.0).abs()<0.1);
     assert!((asn2p-0.5).abs()<0.1);
     assert!((asn3p-0.4).abs()<0.1);
@@ -300,14 +300,14 @@ fn test_example12_asns() {
     let asn4 = assertion4.difficulty(&votes, &MACRO_EG12).0;
     let asn5a = assertion5a.difficulty(&votes, &MACRO_EG12);
     let asn5b = assertion5b.difficulty(&votes, &MACRO_EG12);
-    println!("Example 7 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4} ASN5={asn5a} and {asn5b}");
+    println!("Example 12 : ASN1={asn1} ASN2={asn2}  ASN3={asn3}  ASN4={asn4} ASN5={asn5a} and {asn5b}");
     let asn1p = 100.0*asn1/votes.total_votes().0 as f64;
     let asn2p = 100.0*asn2/votes.total_votes().0 as f64;
     let asn3p = 100.0*asn3/votes.total_votes().0 as f64;
     let asn4p = 100.0*asn4/votes.total_votes().0 as f64;
     let asn5pa = 100.0*asn5a/votes.total_votes().0 as f64;
     let asn5pb = 100.0*asn5b/votes.total_votes().0 as f64;
-    println!("Example 7 percentages : ASN1={asn1p}% ASN2={asn2p}%  ASN3={asn3p}%  ASN4={asn4p}% ASN5={asn5pa}% and {asn5pb}%");
+    println!("Example 12 percentages : ASN1={asn1p}% ASN2={asn2p}%  ASN3={asn3p}%  ASN4={asn4p}% ASN5={asn5pa}% and {asn5pb}%");
     assert!((asn1p-0.17).abs()<0.01);
     assert!((asn2p-0.07).abs()<0.01);
     assert!((asn3p-0.11).abs()<0.01);

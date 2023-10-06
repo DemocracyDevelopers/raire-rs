@@ -197,6 +197,7 @@ impl NotEliminatedNext {
         audit.difficulty(tally_winner, tally_loser) // active paper count = tallies.iter().cloned().sum() for historical reenactment
     }
 
+    /// Find the best NEN cote to rule out winner from being the next eliminated when only the given candidates are continuing
     pub fn find_best_difficulty<A:AuditType>(votes:&Votes, audit:&A, continuing:&[CandidateIndex], winner:CandidateIndex) -> Option<AssertionAndDifficulty> {
         let tallies = votes.restricted_tallies(&continuing);
         let mut tally_winner = BallotPaperCount(usize::MAX);
@@ -217,6 +218,7 @@ impl NotEliminatedNext {
         } else {None}
     }
 
+    /// See if the given candidate is in the continuing list
     fn is_continuing(&self,c:CandidateIndex) -> bool {
         self.continuing.binary_search_by_key(&c.0,|e|e.0).is_ok()
     }
