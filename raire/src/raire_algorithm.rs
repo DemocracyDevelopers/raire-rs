@@ -25,6 +25,7 @@ use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTr
 fn is_false(b:&bool) -> bool {!*b}
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
+/// The main result of the RAIRE algorithm.
 pub struct RaireResult {
     pub assertions : Vec<AssertionAndDifficulty>,
     pub difficulty: AssertionDifficulty,
@@ -40,6 +41,7 @@ pub struct RaireResult {
 }
 
 impl RaireResult {
+    /// Note this is not very efficient; you would only want to use this for tests.
     pub fn possible_elimination_orders_allowed_by_assertions(&self,num_candidates:u32) -> Vec<EliminationOrder> {
         let mut elimination_orders = all_elimination_orders(num_candidates);
         for a in &self.assertions {
@@ -61,6 +63,7 @@ impl RaireResult {
         elimination_orders
     }
 
+    /// Note that this can be very slow to check that the winner is not eliminated.
     pub fn verify_result_does_prove_winner(&self) -> Result<(),RaireError> {
         let all_assertions : Vec<Assertion> = self.assertions.iter().map(|ad|ad.assertion.clone()).collect();
         let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
@@ -76,7 +79,7 @@ impl RaireResult {
 #[derive(Debug)]
 /// An entry in the priority queue.
 struct SequenceAndEffort {
-    /// a permutation that needs to be ruled out.
+    /// an elimination order suffix that needs to be ruled out.
     pi : EliminationOrderSuffix,
     best_assertion_for_ancestor : AssertionAndDifficulty,
     /// the best ancestor for pi will be a subset of pi, in particular the last best_ancestor_length elements of pi.

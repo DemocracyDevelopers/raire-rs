@@ -181,6 +181,7 @@ impl Votes {
 
 }
 
+/// The result of an IRV election.
 pub struct IRVResult {
     /// Possible winners under IRV with no tie resolution. There may be tie resolution rules, but such a close election is not auditable stochastically.
     pub possible_winners : Vec<CandidateIndex>,

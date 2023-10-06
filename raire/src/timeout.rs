@@ -39,6 +39,7 @@ impl TimeOut {
         self.start_time.elapsed()
     }
 
+    /// Get the total number of units of work done
     pub fn get_work_done(&self) -> u64 { self.work_done }
 
     pub fn time_taken(&self) -> TimeTaken {
@@ -60,7 +61,7 @@ impl TimeOut {
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]
-/// A measure of the time taken to do something.
+/// A measure of the time taken to do something, both in units of work and clock time
 pub struct TimeTaken {
     pub work : u64,
     pub seconds : f64,
