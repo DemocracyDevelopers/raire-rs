@@ -110,6 +110,10 @@ fn test_votes_structure() {
     assert_eq!(BallotPaperCount(15000),votes.first_preference_only_tally(CandidateIndex(3)));
     assert_eq!(vec![BallotPaperCount(26000),BallotPaperCount(10000),BallotPaperCount(24000)],votes.restricted_tallies(&vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(3)]));
     assert_eq!(vec![BallotPaperCount(26000),BallotPaperCount(30000)],votes.restricted_tallies(&vec![CandidateIndex(0),CandidateIndex(3)]));
+    let result = votes.run_election(&mut TimeOut::never()).unwrap();
+    assert_eq!(vec![CandidateIndex(3)],result.possible_winners);
+    assert_eq!(vec![CandidateIndex(2),CandidateIndex(1),CandidateIndex(0),CandidateIndex(3)],result.elimination_order);
+
 }
 
 #[test]
