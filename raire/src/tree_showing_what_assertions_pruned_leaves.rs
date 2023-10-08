@@ -20,14 +20,15 @@ use crate::timeout::TimeOut;
 /// * At least one assertion prunes all subsequent orders
 /// * No assertions prune any subsequent order
 ///
-/// One can optionally ask for an extended tree, which extends pruned nodes one extra step
-/// if each of their children is also pruned. This is useful for finding redundant assertions
+/// One can optionally ask for an extended, which extends beyond pruned nodes if it is possible
+/// for their children to be pruned. See HowFarToContinueSearchTreeWhenPruningAssertionFound for details.
+/// This is useful for finding redundant assertions
 /// that can be removed, at the cost of making the frontier larger.
 pub struct TreeNodeShowingWhatAssertionsPrunedIt {
     pub candidate_being_eliminated_at_this_node: CandidateIndex, // The candidate eliminated at this step.
     pub pruning_assertions : Vec<usize>, // if any assertions prune it, their index in the main assertion list.
     pub children : Vec<TreeNodeShowingWhatAssertionsPrunedIt>, // its children, if any.
-    pub valid : bool, // whether this node or a child thereof is not eliminated by any assertion.
+    pub valid : bool, // true if this node or a child thereof is not eliminated by any assertion.
 }
 
 impl TreeNodeShowingWhatAssertionsPrunedIt {
@@ -74,10 +75,11 @@ impl TreeNodeShowingWhatAssertionsPrunedIt {
 pub enum HowFarToContinueSearchTreeWhenPruningAssertionFound {
     /// When a pruning assertion is found, don't look any further. Minimizes size of pruning tree.
     StopImmediately,
-    /// When a pruning assertion is found, continue and see if its children are sufficient to stop it.
+    /// When a pruning assertion is found, continue and see if its descendents are sufficient to stop it. But once it is stopped by a frontier of descendents, don't try each of their descendents.
     ContinueOnce,
     /// When a pruning assertion is found, continue. Don't stop unless no assertions left.
     Forever,
+    /// Like forever, but do stop at a pruning assertion if at least one NEB prunes it. This is a useful heuristic as in practice NEBs are almost never redundant but often have very large descendent trees that need searching.
     StopOnNEB,
 }
 
@@ -345,6 +347,7 @@ mod tests {
     use crate::timeout::TimeOut;
     use crate::tree_showing_what_assertions_pruned_leaves::{HowFarToContinueSearchTreeWhenPruningAssertionFound, TreeNodeShowingWhatAssertionsPrunedIt};
 
+    /// Get the assertions listed in "A guide to RAIRE".
     fn raire_guide_assertions() -> Vec<Assertion> {
         vec![
             Assertion::NEN(NotEliminatedNext{winner:CandidateIndex(0),loser:CandidateIndex(1),continuing:vec![CandidateIndex(0),CandidateIndex(1),CandidateIndex(2),CandidateIndex(3)]}),
@@ -367,6 +370,7 @@ mod tests {
         let tree1 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(1),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
         let tree2 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(2),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
         let tree3 = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],CandidateIndex(3),&relevant_assertions,&all_assertions,4,HowFarToContinueSearchTreeWhenPruningAssertionFound::StopImmediately,&mut timeout).unwrap();
+        // check tree0 (candidate 0 elimination)
         assert_eq!(false,tree0.valid);
         assert_eq!(3,tree0.children.len());
         assert_eq!(vec![4],tree0.children[0].pruning_assertions);
@@ -375,9 +379,12 @@ mod tests {
         assert_eq!(2,tree0.children[2].children.len());
         assert_eq!(vec![4],tree0.children[2].children[0].pruning_assertions);
         assert_eq!(vec![3],tree0.children[2].children[1].pruning_assertions);
+        // check tree1
         assert_eq!(false,tree1.valid);
         assert_eq!(vec![4],tree1.pruning_assertions);
+        // check tree2
         assert_eq!(true,tree2.valid); // candidate 2 won.
+        // check tree3
         assert_eq!(false,tree3.valid);
         assert_eq!(3,tree3.children.len());
         assert_eq!(vec![5],tree3.children[0].pruning_assertions);
