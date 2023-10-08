@@ -65,13 +65,17 @@ sufficient to rule it out. If not, we choose one assertion arbitrarily.
 
 In practice, this simple two pass approach seems to work well, possibly optimally.
 
+Furthermore, another heuristic which seems to produce optimal results on all tests and sometimes saves
+a huge amount of time is to always stop trimming when an NEB assertion is found. That is, don't even
+consider alternate ways of trimming via descendents.
+
 ## Trim algorithm 2: Minimize Assertions
 
 The _minimize assertions_ algorithm aims to minimize the total number of assertions, even if that makes
 the tree larger than it would be otherwise. This reduces the total amount of administration needed.
 
 Again we build up the tree from the root, except this time we do not stop at a node as soon as an assertion
-rules out the elimination orders defined by that node. Instead we continue while there are assertions relevant
+rules out the elimination orders defined by that node. Instead, we continue while there are assertions relevant
 to the tree. It may turn out that assertion A1 blocks a node, but that assertions A2 and A3 block all
 the children of that node. In this case we say that either A1 is needed, or both A2 and A3 are needed. 
 Of course the situation may be even more complex - it may be able to use both A4 and A5 instead of A3 as well.
