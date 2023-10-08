@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
                     problem.trim_algorithm=Some(trim);
                     table.push(problem.solve());
                 }
-                problem.trim_algorithm=Some(TrimAlgorithm::MinimizeAssertions2);
+                problem.trim_algorithm=Some(TrimAlgorithm::MinimizeAssertions);
                 println!("{} contest {} with {} candidates {} ballots of which {} are distinct",entry.file_name().to_string_lossy(),contest_index+1,problem.num_candidates,num_ballots,problem.votes.len());
                 let time_start = SystemTime::now();
                 let solution = problem.solve();
