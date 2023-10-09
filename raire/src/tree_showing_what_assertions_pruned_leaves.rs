@@ -107,13 +107,7 @@ impl HowFarToContinueSearchTreeWhenPruningAssertionFound {
 /// the rest of the computation. So it is not enabled.
 const CHECK_WINNER_NOT_ELIMINATED:bool=false;
 
-/// Change the list of assertions to order them with the first removing the most undesired elimination orders,
-/// the second removing the most of what is left, etc.
-///
-/// Assertions that don't remove anything other than from places where the winner ends will be removed.
-///
-/// consider_children_of_eliminated_nodes, if true, will take a little longer and possibly produce a smaller number of assertions
-/// at the cost of a larger tree size for the eliminated paths tree.
+/// Sort the assertions in a human sensible manner, and then trim them.
 ///
 /// Note that if a timeout error is produced, the assertions array will be sorted but otherwise unchanged
 /// from the original call.
@@ -147,9 +141,9 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     } { // do the actual trimming
         let all_assertions : Vec<Assertion> = assertions.iter().map(|ad|ad.assertion.clone()).collect();
         let all_assertion_indices : Vec<usize> = (0..all_assertions.len()).collect();
-        let mut find_used = SimplisticWorkOutWhichAssertionsAreUsed::new(assertions.len());
+        let mut find_used = HeuristicWorkOutWhichAssertionsAreUsed::new(assertions.len());
         let mut trees = vec![];
-        for candidate in 0..num_candidates {
+        for candidate in 0..num_candidates { // create trees and do first pass
             let candidate = CandidateIndex(candidate);
             if candidate!=winner || CHECK_WINNER_NOT_ELIMINATED {
                 let tree = TreeNodeShowingWhatAssertionsPrunedIt::new(&[],candidate,&all_assertion_indices,&all_assertions,num_candidates,consider_children_of_eliminated_nodes,timeout)?;
@@ -174,13 +168,19 @@ pub fn order_assertions_and_remove_unnecessary(assertions:&mut Vec<AssertionAndD
     Ok(())
 }
 
-/// a really simplistic method of computing which assertions are used - just use the first from each list. Benefits: fast, simple. Drawbacks: Not optimal in general.
-/// However, almost always it will end up being optimal if the HowFarToContinueSearchTreeWhenPruningAssertionFound::Forever option is used.
-struct SimplisticWorkOutWhichAssertionsAreUsed {
+/// A pretty simple method of computing which assertions are used which may not always
+/// be optimal, but is fast, and, in practice, has turned out to be optimal for every case
+/// I tried it on.
+///
+/// The general problem can be converted to a problem of selection at least one of a combination
+/// of expressions. The heuristic is a first pass choosing ones where there is no choice, and
+/// a second pass of choosing arbitrarily amongst the remaining ones where prior choices have
+/// not solved it.
+struct HeuristicWorkOutWhichAssertionsAreUsed {
     assertions_used : Vec<bool>,
 }
 
-impl SimplisticWorkOutWhichAssertionsAreUsed {
+impl HeuristicWorkOutWhichAssertionsAreUsed {
     fn new(len:usize) -> Self { Self{assertions_used:vec![false;len]}}
     fn uses(&self,index:usize) -> bool { self.assertions_used[index] }
     /// Some (most) nodes have exactly one assertion. Assign these assertions, as they MUST be used.
