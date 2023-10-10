@@ -20,7 +20,7 @@ use utilities::table_of_results::TableOfResults;
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_default_env().format_timestamp_millis().filter_level(log::LevelFilter::Trace).init();
     let mut summary = TableOfResults::default();
-    let mut summaries = vec![TableOfResults::default(),TableOfResults::default(),TableOfResults::default(),TableOfResults::default()];
+    let mut summaries = vec![TableOfResults::default(),TableOfResults::default(),TableOfResults::default()];
     let folder = "../audit-irv-cp-raire-branch/USIRV/";
     for entry in std::fs::read_dir(folder)? {
         let entry = entry?;
