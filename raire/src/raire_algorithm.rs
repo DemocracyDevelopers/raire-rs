@@ -247,6 +247,10 @@ pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,tr
                 if let Some(last) = last {
                     assert_eq!(last.pi.len(),votes.num_candidates() as usize);
                     last.contains_all_candidates(&mut assertions,&mut frontier,&mut lower_bound)?;
+                    if sequence_being_considered.difficulty()<= lower_bound { // the lower bound may have changed in such a way that there is no point continuing this assertion.
+                        sequence_being_considered.just_take_assertion(&mut assertions,&mut frontier);
+                        continue;
+                    }
                 }
             }
             for c in 0..votes.num_candidates() { // for each(c ∈ C \ π):
