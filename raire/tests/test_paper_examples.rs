@@ -31,7 +31,7 @@ fn get_votes_in_table1() -> Votes {
         Vote{ n: BallotPaperCount(15000), prefs: vec![c4,c1,c2]},
         Vote{ n: BallotPaperCount( 6000), prefs: vec![c1,c3]},
     ];
-    Votes::new(votes, 4)
+    Votes::new(votes, 4).unwrap()
 }
 
 /// Get the votes in table 1.
@@ -49,7 +49,7 @@ fn get_votes_for_example5() -> Votes {
         Vote{ n: BallotPaperCount(  500), prefs: vec![c4]},
         Vote{ n: BallotPaperCount(  499), prefs: vec![c5]},
     ];
-    Votes::new(votes, 5)
+    Votes::new(votes, 5).unwrap()
 }
 
 
@@ -63,7 +63,7 @@ fn get_votes_for_example9() -> Votes {
         Vote{ n: BallotPaperCount( 6000), prefs: vec![c2,c1,c3]},
         Vote{ n: BallotPaperCount( 5999), prefs: vec![c3,c1,c2]},
     ];
-    Votes::new(votes, 3)
+    Votes::new(votes, 3).unwrap()
 }
 
 
@@ -82,7 +82,7 @@ fn get_votes_for_example12() -> Votes {
         Vote{ n: BallotPaperCount( 500), prefs: vec![c3,c1,c2]},
         Vote{ n: BallotPaperCount(5000), prefs: vec![c4,c1]},
     ];
-    Votes::new(votes, 4)
+    Votes::new(votes, 4).unwrap()
 }
 
 

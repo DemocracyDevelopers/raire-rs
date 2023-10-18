@@ -624,8 +624,10 @@ function describe_raire_result(output_div,explanation_div,data) {
         explain(explanation_div,assertions,candidate_names,document.getElementById("ExpandAtStart").checked,document.getElementById("DrawAsText").checked,hide_winner,winner_id);
     } else if (data.solution && data.solution.Err) {
         let err = data.solution.Err;
-        if (err==="TimeoutCheckingWinner") {
-            add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small.";
+        if (err==="InvalidCandidateNumber") {
+            add(output_div, "p", "error").innerText = "Invalid candidate number in the preference list. Candidate numbers should be 0 to num_candidates-1 inclusive.";
+        } else if (err==="TimeoutCheckingWinner") {
+                add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small.";
         } else if (err.hasOwnProperty("TimeoutFindingAssertions")) {
             add(output_div,"p","error").innerText="Timeout finding assertions - your problem is quite hard. Difficulty when interrupted : "+err.TimeoutFindingAssertions;
         } else if (err==="InvalidTimeout") {

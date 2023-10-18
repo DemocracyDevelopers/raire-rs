@@ -33,7 +33,7 @@ fn get_votes() -> Votes {
         Vote{ n: BallotPaperCount(4000), prefs: vec![A,D]},
         Vote{ n: BallotPaperCount(2000), prefs: vec![D]},
     ];
-    Votes::new(votes, 4)
+    Votes::new(votes, 4).unwrap()
 }
 
 /// The audit used in the examples.

@@ -135,14 +135,15 @@ pub struct Votes {
 
 
 impl Votes {
-    pub fn new(votes:Vec<Vote>,num_candidates:usize) -> Votes {
+    pub fn new(votes:Vec<Vote>,num_candidates:usize) -> Result<Votes,RaireError> {
         let mut first_preference_votes = vec![BallotPaperCount(0);num_candidates];
         for v in &votes {
             if let Some(c) = v.prefs.get(0) {
+                if c.0 as usize>=num_candidates { return Err(RaireError::InvalidCandidateNumber); }
                 first_preference_votes[c.0 as usize]+=v.n;
             }
         }
-        Votes { votes, first_preference_votes }
+        Ok(Votes { votes, first_preference_votes })
     }
     pub fn first_preference_only_tally(&self,candidate:CandidateIndex) -> BallotPaperCount { self.first_preference_votes[candidate.0 as usize] }
 

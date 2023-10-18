@@ -26,6 +26,8 @@ pub mod timeout;
 pub enum RaireError {
     #[error("time out limit should be greater than zero")]
     InvalidTimeout,
+    #[error("candidate numbers in the preferences lists should be integers 0 to num_candidates-1")]
+    InvalidCandidateNumber,
     #[error("time out while checking all possible winners - this is a really nasty dataset")]
     TimeoutCheckingWinner,
     #[error("time out while finding assertions - difficulty at time of stopping {0}")]
@@ -81,13 +83,15 @@ pub struct RaireSolution {
 
 impl RaireProblem {
     pub fn solve(self) -> RaireSolution {
-        let votes = Votes::new(self.votes,self.num_candidates);
         let solution = {
             if self.time_limit_seconds.is_some_and(|v|v<=0.0||v.is_nan()) {
                 Err(RaireError::InvalidTimeout)
             } else {
                 let mut timeout = timeout::TimeOut::new(None,self.time_limit_seconds.map(|seconds|Duration::from_secs_f64(seconds)));
-                raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree),&mut timeout)
+                match Votes::new(self.votes,self.num_candidates) {
+                    Ok(votes) => raire(&votes,self.winner,&self.audit,self.trim_algorithm.unwrap_or(TrimAlgorithm::MinimizeTree),&mut timeout),
+                    Err(e) => Err(e)
+                }
             }
         };
         RaireSolution{metadata:self.metadata,solution}
