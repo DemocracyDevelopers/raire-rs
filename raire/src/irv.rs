@@ -102,6 +102,11 @@ impl fmt::Debug for SubCandidateIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "#{}", self.0) }
 }
 
+impl SubCandidateIndex {
+    const INVALID : SubCandidateIndex = SubCandidateIndex(u32::MAX);
+}
+
+
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Vote {
     /// The number of voters who voted this way
@@ -122,6 +127,15 @@ impl Vote {
     pub fn top_sub_preference(&self,continuing:&HashMap<CandidateIndex,SubCandidateIndex>) -> Option<SubCandidateIndex> {
         for c in &self.prefs {
             if let Some(sub) = continuing.get(c) { return Some(*sub) }
+        }
+        None
+    }
+    /// find the highest preferenced candidate amongst the continuing candidates
+    pub fn top_sub_preference_array(&self,continuing:&[SubCandidateIndex]) -> Option<SubCandidateIndex> {
+        for c in &self.prefs {
+            if let Some(sub) = continuing.get(c.0 as usize) {
+                if *sub!=SubCandidateIndex::INVALID { return Some(*sub) }
+            }
         }
         None
     }
@@ -150,13 +164,17 @@ impl Votes {
     /// Get the tallies for continuing candidates, returning a vector of the same length and order as the continuing structure
     pub fn restricted_tallies(&self,continuing:&[CandidateIndex]) -> Vec<BallotPaperCount> {
         let mut res = vec![BallotPaperCount(0);continuing.len()];
-        let mut continuing_map : HashMap<CandidateIndex,SubCandidateIndex> = Default::default();
-        for i in 0..continuing.len() {
-            continuing_map.insert(continuing[i],SubCandidateIndex(i as u32));
-        }
-        for v in &self.votes {
-            if let Some(c) = v.top_sub_preference(&continuing_map) {
-                res[c.0 as usize]+=v.n;
+        if continuing.len()>0 {
+            //let mut continuing_map : HashMap<CandidateIndex,SubCandidateIndex> = Default::default();
+            let mut continuing_map: Vec<SubCandidateIndex> = vec![SubCandidateIndex::INVALID;continuing.iter().map(|v|v.0).max().unwrap() as usize+1];
+            for i in 0..continuing.len() {
+                // continuing_map.insert(continuing[i],SubCandidateIndex(i as u32));
+                continuing_map[continuing[i].0 as usize]=SubCandidateIndex(i as u32);
+            }
+            for v in &self.votes {
+                if let Some(c) = v.top_sub_preference_array(&continuing_map) {
+                    res[c.0 as usize]+=v.n;
+                }
             }
         }
         res
