@@ -1,0 +1,16 @@
+
+This repository contains some files derived from data sources with their
+own separate copyrights. These files maintain the original copyright to the appropriate
+extent.
+
+* Australian Examples/NSW Local Government/
+
+  These lists are partially derived from data on the
+  [NSW Electoral Commission website](https://www.elections.nsw.gov.au), which
+  is © State of New South Wales through the NSW Electoral Commission
+  and licensed under the [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/) (CCA License).
+  Thank you to the State of New South Wales for the use of such a license allowing us to use
+  this real election data as test data.
+
+This should not be taken as an endorsement of raire-rs by any organisation listed here.
+
