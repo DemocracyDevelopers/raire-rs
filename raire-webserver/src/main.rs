@@ -14,7 +14,7 @@ use axum::{
     http::StatusCode,
     Json, Router,
 };
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use clap::Parser;
@@ -55,15 +55,10 @@ async fn main() {
         .nest_service("/",serve_dir);
 
 
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
-    let ip = args.ip.unwrap_or_else(||[127, 0, 0, 1].into());
-    let addr = SocketAddr::from((ip, args.socket.unwrap_or(3000)));
-    println!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let address = format!("127.0.0.1:{}",args.socket.unwrap_or(3000));
+    println!("listening on {}", address);
+    let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
+    axum::serve(listener,app).await.unwrap();
 }
 
 
