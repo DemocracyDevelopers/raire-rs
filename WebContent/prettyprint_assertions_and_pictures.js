@@ -589,8 +589,18 @@ function describe_raire_result(output_div,explanation_div,data) {
         if (data.solution.Ok.hasOwnProperty("difficulty")) heading_name+=" - difficulty = "+data.solution.Ok.difficulty;
         if (data.solution.Ok.hasOwnProperty("margin")) heading_name+=" margin = "+data.solution.Ok.margin;
         add(output_div,"h3","Assertions").innerText=heading_name;
+        let assertionRisks = data.metadata && data.metadata.assertionRisks; // a tool may add the risk limits from the audit to the metadata
+        let riskLimit = data.metadata && data.metadata.riskLimit;
+        let assertionIndex = 0;
         for (const av of data.solution.Ok.assertions) {
             let adiv = add(output_div,"div");
+            if (Array.isArray(assertionRisks) && assertionRisks.length>assertionIndex) {
+                let risk = assertionRisks[assertionIndex];
+                let isGood = typeof riskLimit==="number"?(risk<=riskLimit?"risk_ok":"risk_bad"):"risk"
+                let span = add(adiv,"span",isGood);
+                span.innerText=""+risk;
+                if (typeof riskLimit==="number") span.title="Risk limit = "+riskLimit;
+            }
             if (av.hasOwnProperty("difficulty")) add(adiv,"span","difficulty_start").innerText=""+av.difficulty; // Michelle's format doesn't have it for individual assertions
             if (av.hasOwnProperty("margin")) add(adiv,"span","margin_start").innerText=""+av.margin; // Michelle's format (and old raire-rs) doesn't have it for individual assertions
             const a = av.assertion;
@@ -602,6 +612,7 @@ function describe_raire_result(output_div,explanation_div,data) {
             } else {
                 adesc.innerText="Unknown assertion type"
             }
+            assertionIndex++;
         }
         let candidate_names = data.metadata && data.metadata.candidates;
         if (!(Array.isArray(candidate_names) && candidate_names.length===data.solution.Ok.num_candidates)) {

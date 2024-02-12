@@ -80,9 +80,12 @@ type is "OneOnMargin" with a total number of auditable ballots of 13500.
 ```
 
 The input is JSON, with a single object containing the following fields:
-* `metadata` : An arbitrary JSON object. The following sub-fields are used in some of the associated tools: 
+* `metadata` : An arbitrary JSON object for use in associated tools. The following sub-fields are used by the visualizer. None of them are used for the computation: 
   * `candidates` : An array of candidate names (one string for each candidate). The length of this array should match the *num_candidates* field.
   * `contest` : If present, the name of the contest (a string)
+  * `riskLimit` : If present, the desired risk limit (a number)
+  * `assertionRisks` : If present, and array of numbers of same length as the assertions indicating the risk for each assertion as a result of the audit. 
+    This is obviously not available until after the audit, where it may be added to the metadata by other tools for convenience and reporting.
 * `num_candidates` : An integer specifying how many candidates there are in the contest
 * `votes` : An array of objects. Each object contains two fields:
   * `n` : The number of votes with this specific preference list

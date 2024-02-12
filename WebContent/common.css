@@ -30,6 +30,22 @@ span.margin_start {
     padding-right: 1em;
 }
 
+span.risk,span.risk_ok,span.risk_bad {
+    display: inline-block;
+    width : 10em;
+    text-align: right;
+    padding-right: 1em;
+}
+
+span.risk_bad {
+    color: red;
+}
+
+span.risk_ok {
+    color: green;
+}
+
+
 span.winner {
     color : green;
 }
