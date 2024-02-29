@@ -181,7 +181,7 @@ const USE_DIVING : bool = true;
 
 pub fn raire<A:AuditType>(votes:&Votes,winner:Option<CandidateIndex>,audit:&A,trim_algorithm:TrimAlgorithm,timeout:&mut TimeOut) -> Result<RaireResult,RaireError> {
     log::debug!("Starting raire with {} candidates and {} distinct votes",votes.num_candidates(),votes.votes.len());
-    if votes.num_candidates()==0 { return Err(RaireError::InvalidCandidateNumber); }
+    if votes.num_candidates()==0 { return Err(RaireError::InvalidNumberOfCandidates); }
     let irv_result = votes.run_election(timeout)?;
     let time_to_determine_winners = timeout.time_taken();
     if let Some(winner) = winner {

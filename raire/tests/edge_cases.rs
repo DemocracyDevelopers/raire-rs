@@ -35,7 +35,7 @@ fn test_zero_candidates() {
     };
     let solution = problem.solve();
     match solution.solution {
-        Err(RaireError::InvalidCandidateNumber) => {}
+        Err(RaireError::InvalidNumberOfCandidates) => {}
         _ => panic!("Expecting invalid candidate number, got {}",serde_json::to_string_pretty(&solution.solution).unwrap())
     }
 }
