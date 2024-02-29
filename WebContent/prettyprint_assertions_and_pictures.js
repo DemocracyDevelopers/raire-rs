@@ -637,8 +637,10 @@ function describe_raire_result(output_div,explanation_div,data) {
         let err = data.solution.Err;
         if (err==="InvalidCandidateNumber") {
             add(output_div, "p", "error").innerText = "Invalid candidate number in the preference list. Candidate numbers should be 0 to num_candidates-1 inclusive.";
+        } else if (err==="InvalidNumberOfCandidates") {
+            add(output_div, "p", "error").innerText = "Invalid number of candidates. There should be at least one candidate.";
         } else if (err==="TimeoutCheckingWinner") {
-                add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small.";
+            add(output_div, "p", "error").innerText = "Timeout checking winner - either your problem is exceptionally difficult, or your timeout is exceedingly small.";
         } else if (err.hasOwnProperty("TimeoutFindingAssertions")) {
             add(output_div,"p","error").innerText="Timeout finding assertions - your problem is quite hard. Difficulty when interrupted : "+err.TimeoutFindingAssertions;
         } else if (err==="InvalidTimeout") {

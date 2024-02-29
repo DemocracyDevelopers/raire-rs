@@ -24,6 +24,8 @@ pub mod timeout;
 
 #[derive(thiserror::Error, Debug,Serialize,Deserialize,Clone)]
 pub enum RaireError {
+    #[error("there must be at least one candidate")]
+    InvalidNumberOfCandidates,
     #[error("time out limit should be greater than zero")]
     InvalidTimeout,
     #[error("candidate numbers in the preferences lists should be integers 0 to num_candidates-1")]
