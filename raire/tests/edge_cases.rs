@@ -14,7 +14,7 @@
 
 use serde_json::json;
 use raire::audit_type::{Audit, BallotComparisonOneOnDilutedMargin};
-use raire::irv::{BallotPaperCount, CandidateIndex};
+use raire::irv::{BallotPaperCount, CandidateIndex, Vote};
 use raire::raire_algorithm::TrimAlgorithm;
 use raire::{RaireError, RaireProblem};
 
@@ -56,6 +56,32 @@ fn test_one_candidates() {
         difficulty_estimate: None,
         time_limit_seconds: None,
     };
+    let solution = problem.solve().solution.unwrap();
+    assert_eq!(CandidateIndex(0),solution.winner);
+}
+
+
+
+#[test]
+/// Test 1 candidate with lots of votes, and 100 candidates with one vote each.
+/// This checks the efficient computation of who won when lots of unimportant ties
+/// exist.
+fn test_efficient_who_wins() {
+    let mut problem = RaireProblem {
+        metadata : json!({
+            "candidates" : ["Alice","Bob","Chuan","Diego"]
+        }),
+        num_candidates : 101,
+        votes : vec![Vote{ n: BallotPaperCount(1000), prefs: vec![CandidateIndex(0)] }],
+        winner : Some(CandidateIndex(0)),
+        audit : Audit::OneOnMargin(BallotComparisonOneOnDilutedMargin { total_auditable_ballots : BallotPaperCount(1100) }),
+        trim_algorithm: Some(TrimAlgorithm::MinimizeAssertions),
+        difficulty_estimate: None,
+        time_limit_seconds: Some(10.0), // Even on a very slow computer it shouldn't take a second to run. It takes 8ms on my four year old PC.
+    };
+    for i in 1..=100 {
+        problem.votes.push(Vote{ n: BallotPaperCount(1), prefs: vec![CandidateIndex(i)] })
+    }
     let solution = problem.solve().solution.unwrap();
     assert_eq!(CandidateIndex(0),solution.winner);
 }
