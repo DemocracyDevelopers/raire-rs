@@ -615,10 +615,8 @@ function describe_raire_result(output_div,explanation_div,data) {
             assertionIndex++;
         }
         let candidate_names = data.metadata && data.metadata.candidates;
-        if (!(Array.isArray(candidate_names) && candidate_names.length===data.solution.Ok.num_candidates)) {
-            candidate_names = [];
-            for (let i=0;i<parsed_input.num_candidates;i++) { candidate_names.push("Candidate "+i); }
-        }
+        if (!(Array.isArray(candidate_names))) candidate_names = [];
+        for (let i=candidate_names.length;i<data.solution.Ok.num_candidates;i++) { candidate_names.push("Candidate "+i); } // extend names if only some present
         if (data.metadata.hasOwnProperty("contest")) add(explanation_div,"h4").innerText="Contest : "+data.metadata.contest;
         const hide_winner = document.getElementById("HideWinner").checked;
         let winner_id = data.solution.Ok.winner;
