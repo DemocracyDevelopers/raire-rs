@@ -247,7 +247,7 @@ function computeWidthsForTreeNode(tree_node,start_x) {
  */
 class TreeShowingWhatEliminatedItNode {
     /**
-     * Make a new tree showing all paths until they can be elimi
+     * Make a new tree showing all paths until they can be eliminated
      * @param {number[]} parent_elimination_order_suffix A suffix of the elimination order corresponding to the parent of this. [] if no parent.
      * @param {number} body The candidate index this node represents
      * @param {{winner:number,loser:number,continuing:number[],type:string}[]} assertions A list of all the assertions that may apply to this tree
@@ -323,8 +323,9 @@ function make_trees(elimination_orders,after_applying_assertion_elimination_orde
  * @param {number[][]} elimination_orders A list of still valid elimination orders
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
+ * @param {{preventTextOverlapping:boolean,splitGreaterThanLines:boolean,showAssertionIndex:boolean,showAssertionText:boolean}} tree_ui_options UI options for drawing trees (not used in this function)
  */
-function draw_trees_as_text(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description) {
+function draw_trees_as_text(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description,tree_ui_options) {
     for (const eo of elimination_orders) {
         const line = add(div,"div");
         if (eo.length<candidate_names.length) add(line,"span").innerText="...<";
@@ -359,9 +360,10 @@ function drawWinnerOrLoserSymbol(where,cx,cy,candidateClass,node_radius) {
  * @param {EliminationTreeNode} tree
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {string} image_name : a file name for downloading the image
+ * @param {{preventTextOverlapping:boolean,splitGreaterThanLines:boolean,showAssertionIndex:boolean,showAssertionText:boolean}} tree_ui_options UI options for drawing the tree.
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
  **/
-function draw_svg_tree(div,tree,candidate_names,image_name,assertion) {
+function draw_svg_tree(div,tree,candidate_names,image_name,tree_ui_options,assertion) {
     //console.log(tree);
     computeWidthsForTreeNode(tree,0);
     let nodes_wide = tree.width;
@@ -372,71 +374,123 @@ function draw_svg_tree(div,tree,candidate_names,image_name,assertion) {
     const node_radius = 5;
     let svg = addSVG(div,"svg");
     allImages.push({svg:svg,name:image_name});
-    let names = addSVG(svg,"g");
-    let lines = addSVG(svg,"g");
-    let nodes = addSVG(svg,"g");
-    svg.setAttribute("width",nodes_wide*pixels_per_node_x);
-    // svg.setAttribute("height",nodes_high*pixels_per_node_y);
-    function drawTree(node,nodes_above_me) {
-        let cx = (node.start_x+node.width/2.0)*pixels_per_node_x;
-        let cy = (nodes_above_me===0?0.6:(0.5+nodes_above_me))*pixels_per_node_y;
+    const lines = addSVG(svg,"g");
+    const background_names = addSVG(svg,"g");
+    const names = addSVG(svg,"g");
+    const nodes = addSVG(svg,"g");
+    /** Draw a tree
+     * @param {{}} node The root of the tree being drawn
+     * @param {number} nodes_above_me The number of nodes above this node. 0 for first node.
+     * @param {start_x} The minimum x value to start drawing this tree at.
+    // returns a structure containing
+    // * cx : The x coordinate of the start of the tree
+    // * cy : The y coordinate of the start of the tree
+    // * max_y : The largest y coordinate of anything in this tree.
+    // * max_x : The largest x coordinate of anything in this tree (including reasonable border).
+        */
+    function drawTree(node,nodes_above_me,start_x) {
+        // layout algorithm : Draw children first to work out width.
+        let max_child_y = 0;
+        let max_x = start_x;
+        let children_root_positions = [];
+        for (const c of node.orderedChildren) {
+            let position = drawTree(c,nodes_above_me+1,max_x);
+            max_x=position.max_x;
+            children_root_positions.push({cx:position.cx,cy:position.cy,valid:c.valid})
+            if (position.max_y>max_child_y) max_child_y=position.max_y;
+        }
+        let work_when_cx_known = [];
+        const provisional_cx = (node.start_x+node.width/2.0)*pixels_per_node_x;
+        // We don't know where to position it horizontally until we know the label widths.
+        // We need to place the labels at a position to know their width.
+        // We need to know how to position it horizontally to place the labels.
+        // Solution : make up a guess at cx, use it, and readjust if needed.
+        function call_now_and_when_cx_known(f) {
+            f(provisional_cx);
+            work_when_cx_known.push(f);
+        }
+        function call_when_cx_known(f) {
+            work_when_cx_known.push(f);
+        }
+        const cy = (nodes_above_me===0?0.6:(0.5+nodes_above_me))*pixels_per_node_y;
         const candidateClass = candidate_class(node.body,assertion);
         const isWinnerOrLoser = candidateClass==="winner" || candidateClass==="loser";
         let name = addSVG(names,"text",candidateClass+" "+(nodes_above_me===0?"above":"left"));
         name.textContent=candidate_names[node.body];
         if (nodes_above_me===0) { // draw (probably) square, name above
-            name.setAttribute("x",cx);
+            call_now_and_when_cx_known(cx=>name.setAttribute("x",cx));
             name.setAttribute("y",cy-2*node_radius);
+            if (tree_ui_options.preventTextOverlapping) max_x=Math.max(max_x,start_x+name.getBBox().width);
         } else { // draw (probably) circle, name to left
-            name.setAttribute("x",cx-2*node_radius);
+            call_now_and_when_cx_known(cx=>name.setAttribute("x",cx-2*node_radius));
             name.setAttribute("y",cy);
+            if (tree_ui_options.preventTextOverlapping) max_x=Math.max(max_x,start_x+name.getBBox().width*2);
         }
         if (isWinnerOrLoser) { // draw triangle
-            drawWinnerOrLoserSymbol(nodes,cx,cy,candidateClass,node_radius*1.6);
+            call_when_cx_known(cx=>drawWinnerOrLoserSymbol(nodes,cx,cy,candidateClass,node_radius*1.6));
         } else {
             let nodeC = addSVG(nodes,nodes_above_me===0?"rect":"circle",candidateClass);
             if (nodes_above_me===0) { // draw square, name above
-                nodeC.setAttribute("x",cx-node_radius);
+                call_now_and_when_cx_known(cx=>nodeC.setAttribute("x",cx-node_radius));
                 nodeC.setAttribute("y",cy-node_radius);
                 nodeC.setAttribute("width",2*node_radius);
                 nodeC.setAttribute("height",2*node_radius);
             } else { // draw circle, name to left
-                nodeC.setAttribute("cx",cx);
+                call_now_and_when_cx_known(cx=>nodeC.setAttribute("cx",cx));
                 nodeC.setAttribute("cy",cy);
                 nodeC.setAttribute("r",node_radius);
             }
         }
-        function drawLineTo(x,y,valid) { // draw a line from this element to a location
+        // draw lines to the children.
+        function drawLineTo(x,y,valid,cx) { // draw a line from this element to a location
             let line = addSVG(lines,"line",valid?"valid":"invalid");
             line.setAttribute("x1",cx);
             line.setAttribute("y1",cy);
             line.setAttribute("x2",x);
             line.setAttribute("y2",y);
         }
-        let max_child_y = 0;
-        for (const c of node.orderedChildren) {
-            let position = drawTree(c,nodes_above_me+1);
-            drawLineTo(position.cx,position.cy,c.valid);
-            if (position.max_y>max_child_y) max_child_y=position.max_y;
+        for (const c of children_root_positions) {
+            call_when_cx_known(cx=>drawLineTo(c.cx,c.cy,c.valid,cx));
         }
         let end_y = cy+node_radius;
         if (nodes_above_me!==candidate_names.length-1 && node.orderedChildren.length===0) { // draw a triangle below.
-            let top_y = cy+0.5*pixels_per_node_y;
-            let triangle_height = 30;
-            let triangle_half_width = 15;
-            let bottom_y = top_y+triangle_height;
-            drawLineTo(cx,top_y,node.valid);
-            addSVG(nodes,"polygon",node.valid?"valid":"invalid").setAttribute("points",""+cx+","+top_y+" "+(cx-triangle_half_width)+","+bottom_y+" "+(cx+triangle_half_width)+","+bottom_y);
+            const top_y = cy+0.5*pixels_per_node_y;
+            const triangle_height = 30;
+            const triangle_half_width = 15;
+            const bottom_y = top_y+triangle_height;
+            call_when_cx_known(cx=>drawLineTo(cx,top_y,node.valid,cx));
+            const polygon = addSVG(nodes,"polygon",node.valid?"valid":"invalid");
+            call_now_and_when_cx_known(cx=>polygon.setAttribute("points",""+cx+","+top_y+" "+(cx-triangle_half_width)+","+bottom_y+" "+(cx+triangle_half_width)+","+bottom_y));
             const skipped_nodes = factorial(candidate_names.length-1-nodes_above_me);
-            let count = addSVG(names,"text",node.valid?"valid":"invalid");
+            const count = addSVG(names,"text",node.valid?"valid":"invalid");
             count.textContent=""+skipped_nodes;
-            count.setAttribute("x",cx);
+            call_now_and_when_cx_known(cx=>count.setAttribute("x",cx));
             count.setAttribute("y",bottom_y-5);
             end_y = bottom_y;
         }
-        if (node.assertion) { // explain why we stopped here.
+        if (node.assertion && tree_ui_options.showAssertionIndex) { // explain why we stopped here.
+            end_y+=19;
+            let text = addSVG(names,"text","assertion_index");
+            text.textContent=""+(1+node.assertion.assertion_index);
+            call_now_and_when_cx_known(cx=>text.setAttribute("x",cx));
+            text.setAttribute("y",end_y);
+            // SVG CSS doesn't handle background color and borders for text objects. Make an explicit rect.
+            call_when_cx_known(cx => {
+                const border = 3;
+                const box = text.getBBox();
+                const rect = addSVG(background_names,"rect","assertion_index");
+                rect.setAttribute("x", box.x-border);
+                rect.setAttribute("y", box.y-border);
+                rect.setAttribute("width", box.width+2*border);
+                rect.setAttribute("height", box.height+2*border);
+            });
+            end_y+=2;
+        }
+        if (node.assertion && tree_ui_options.showAssertionText) { // explain why we stopped here.
             // compute the lines to show.
-            const lines = [candidate_names[node.assertion.winner]+" > "+candidate_names[node.assertion.loser]];
+            const l1 = candidate_names[node.assertion.winner];
+            const l2 = "> "+candidate_names[node.assertion.loser];
+            const lines = tree_ui_options.splitGreaterThanLines?[l1,l2]:[l1+" "+l2];
             const continuing = node.assertion.continuing;
             if (continuing) {
                 lines.push("continuing:")
@@ -445,17 +499,22 @@ function draw_svg_tree(div,tree,candidate_names,image_name,assertion) {
             // show the lines
             end_y+=5;
             for (const line of lines) {
-                let text = addSVG(names,"text","assertion "+node.assertion.type);
+                const text = addSVG(names,"text","assertion "+node.assertion.type);
                 text.textContent=line;
                 end_y+=11;
-                text.setAttribute("x",cx);
-                text.setAttribute("y",end_y)
+                call_now_and_when_cx_known(cx=>text.setAttribute("x",cx));
+                text.setAttribute("y",end_y);
+                if (tree_ui_options.preventTextOverlapping) max_x=Math.max(max_x,start_x+text.getBBox().width);
             }
         }
-        return {cx:cx,cy:cy,max_y:Math.max(end_y,max_child_y)};
+        max_x = Math.max(max_x,start_x+pixels_per_node_x);
+        const cx = (start_x+max_x)/2;
+        for (const f of work_when_cx_known) f(cx);
+        return {cx:cx,cy:cy,max_y:Math.max(end_y,max_child_y),max_x:max_x};
     }
-    const max_y_used = drawTree(tree,0).max_y;
-    svg.setAttribute("height",max_y_used+10);
+    const space_used = drawTree(tree,0,0);
+    svg.setAttribute("height",space_used.max_y+10);
+    svg.setAttribute("width",space_used.max_x);
 }
 
 /**
@@ -493,18 +552,19 @@ function candidate_class(candidate,assertion) {
  * @param {{winner:number,loser:number,continuing:number[],type:string}} [assertion] The optional assertion used to color code and annotate paths.
  * @param {number[][]} [after_applying_assertion_elimination_orders] A list of still valid elimination orders after the assertion above is applied. Used for coloring
  * @param description A text description of why these trees are being shown suitable for a file name
+ * @param {{preventTextOverlapping:boolean,splitGreaterThanLines:boolean,showAssertionIndex:boolean,showAssertionText:boolean}} tree_ui_options UI options for drawing the tree.
  */
-function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description) {
+function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,after_applying_assertion_elimination_orders,description,tree_ui_options) {
     let trees = make_trees(elimination_orders,after_applying_assertion_elimination_orders);
     for (const tree of trees) {
-        draw_svg_tree(div,tree,candidate_names,"Possible methods for "+candidate_names[tree.body]+" to win "+description,assertion);
+        draw_svg_tree(div,tree,candidate_names,"Possible methods for "+candidate_names[tree.body]+" to win "+description,tree_ui_options,assertion);
     }
 }
 
 /**
  * Make a human-readable explanation of what the assertions imply
  * @param {Element} div The DOM element where things should be inserted
- * @param {{winner:number,loser:number,continuing:number[],type:string}[]} assertions The list of assertions
+ * @param {{winner:number,loser:number,continuing:number[],type:string}[]} assertions The list of assertions. We will add an "assertion_index" field to each if it is not already there.
  * @param {string[]} candidate_names : a list of the candidate names
  * @param {boolean} expand_fully_at_start If true, expand all num_candidates factorial paths. If false, use minimal elimination order suffixes (tree prefixes) where possible.
  * @param {boolean} draw_text_not_trees If true, draw as text (a list of all combinations) rather than as a SVG tree.
@@ -512,10 +572,24 @@ function draw_trees_as_trees(div,elimination_orders,candidate_names,assertion,af
  * @param {number} winner_id 0 based integer saying who the winner is. Only used if hide_winner is true.
  */
 function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_not_trees,hide_winner,winner_id) {
+    for (let assertion_index=0;assertion_index<assertions.length;assertion_index++) {
+        const assertion = assertions[assertion_index];
+        if (!assertion.hasOwnProperty("assertion_index")) assertion.assertion_index = assertion_index;
+    }
     const num_candidates=candidate_names.length;
     //console.log(candidate_names);
     //console.log(assertions);
-    const show_separately = document.getElementById("ShowEffectOfEachAssertionSeparately").checked;
+    function checkBoxIfPresent(boxName,default_value) {
+        let ui = document.getElementById(boxName);
+        return ui?ui.checked:default_value;
+    }
+    const show_separately = checkBoxIfPresent("ShowEffectOfEachAssertionSeparately",false);
+    const tree_ui_options = {
+        preventTextOverlapping : checkBoxIfPresent("preventTextOverlapping",true),
+        splitGreaterThanLines : checkBoxIfPresent("splitGreaterThanLines",true),
+        showAssertionIndex : checkBoxIfPresent("showAssertionIndex",true),
+        showAssertionText : checkBoxIfPresent("showAssertionText",true),
+    };
     allImages=[];
     if (show_separately) {
         // Explain the elimination method.
@@ -526,7 +600,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             elimination_orders=elimination_orders.filter(order=>order[order.length-1]!==winner_id);
         }
         add(div,"h5","explanation_text").innerText="We start with all possible elimination orders"+(hide_winner?" (except those compatible with "+candidate_names[winner_id]+" winning)":"");
-        draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"at start");
+        draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"at start",tree_ui_options);
         for (const assertion of assertions) {
             const assertionHeading = add(div,"h4","assertion_name");
             assertionHeading.append("Assertion : ");
@@ -534,10 +608,10 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             elimination_orders = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,true);
             const elimination_orders_after = assertion_all_allowed_suffixes(assertion,elimination_orders,num_candidates,false);
             add(div,"h5","explanation_text").innerText="Evaluate assertion, expanding paths if necessary";
-            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after,"before applying "+assertion_description(assertion,candidate_names));
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,assertion,elimination_orders_after,"before applying "+assertion_description(assertion,candidate_names),tree_ui_options);
             elimination_orders = elimination_orders_after;
             add(div,"h5","explanation_text").innerText="After applying assertion";
-            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"after applying "+assertion_description(assertion,candidate_names));
+            draw_trees(add(div,"div","all_trees"),elimination_orders,candidate_names,null,null,"after applying "+assertion_description(assertion,candidate_names),tree_ui_options);
         }
     } else {
         // Explain the elimination method.
@@ -546,7 +620,7 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
             if (hide_winner && candidate===winner_id) continue;
             const tree = new TreeShowingWhatEliminatedItNode([],candidate,assertions,candidate_names.length);
             add(div,"h5","candidate_result").innerText=candidate_names[candidate]+(tree.valid?" is NOT ruled out by the assertions":" is ruled out by the assertions");
-            draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,"Elimination tree for "+candidate_names[candidate],null);
+            draw_svg_tree(add(div,"div","all_trees"),tree,candidate_names,"Elimination tree for "+candidate_names[candidate],tree_ui_options,null);
         }
     }
     let save_images_button = add(div,"button");
@@ -557,7 +631,9 @@ function explain(div,assertions,candidate_names,expand_fully_at_start,draw_text_
 function checkOptionVisibility() {
     const show_separately = document.getElementById("ShowEffectOfEachAssertionSeparately").checked;
     const applies_to = document.getElementById("IfShowEffectOfEachAssertionSeparately");
+    const applies_to_inverse = document.getElementById("IfNotShowEffectOfEachAssertionSeparately");
     if (applies_to) applies_to.style.display=show_separately?"":"none";
+    if (applies_to_inverse) applies_to_inverse.style.display=show_separately?"none":"";
 }
 
 function describe_raire_result(output_div,explanation_div,data) {

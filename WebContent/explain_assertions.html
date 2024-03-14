@@ -70,9 +70,15 @@
 <h3>Explanation of why it works</h3>
 <input type="checkbox" id="ShowEffectOfEachAssertionSeparately"/><label for="ShowEffectOfEachAssertionSeparately">Show effect of each assertion sequentially (can be slow)</label><br/>
 <input type="checkbox" id="HideWinner" checked="checked"/><label for="HideWinner">Don't bother drawing the (technically unnecessary) trees for the winning candidate.</label><br/>
+<input type="checkbox" id="preventTextOverlapping" checked="checked"/><label for="preventTextOverlapping">Prevent text overlapping (by making trees wider if needed)</label><br/>
 <div id="IfShowEffectOfEachAssertionSeparately">
     <input type="checkbox" id="ExpandAtStart"/><label for="ExpandAtStart">Expand fully all elimination orders at start</label><br/>
     <input type="checkbox" id="DrawAsText"/><label for="ExpandAtStart">Draw as text rather than trees</label><br/>
+</div>
+<div id="IfNotShowEffectOfEachAssertionSeparately">
+    <input type="checkbox" id="showAssertionIndex" checked="checked"/><label for="showAssertionIndex">Show the index of the assertion that eliminated a branch</label><br/>
+    <input type="checkbox" id="showAssertionText" checked="checked"/><label for="showAssertionText">Show a text description of the assertion that eliminated a branch</label><br/>
+    <input type="checkbox" id="splitGreaterThanLines" checked="checked"/><label for="splitGreaterThanLines">Split the text description over more lines</label><br/>
 </div>
 
 <div id="Explanation"> </div>

@@ -155,4 +155,8 @@ window.onload = function () {
     document.getElementById("DrawAsText").addEventListener('change',explain_assertions);
     document.getElementById("HideWinner").addEventListener('change',explain_assertions);
     document.getElementById("ShowEffectOfEachAssertionSeparately").addEventListener('change',explain_assertions);
+    document.getElementById("preventTextOverlapping").addEventListener('change',explain_assertions);
+    document.getElementById("showAssertionIndex").addEventListener('change',explain_assertions);
+    document.getElementById("showAssertionText").addEventListener('change',explain_assertions);
+    document.getElementById("splitGreaterThanLines").addEventListener('change',explain_assertions);
 }

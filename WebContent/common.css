@@ -116,6 +116,28 @@ text.assertion {
     font-style: italic;
 }
 
+text.assertion_index {
+    dominant-baseline : auto;
+    text-anchor : middle;
+    font-style: italic;
+    color: black;
+}
+
+rect.assertion_index {
+    fill: peachpuff;
+    stroke: purple;
+    stroke-width: 2px;
+    rx: 4px;
+}
+span.assertion_index {
+    font-style: italic;
+    color: black;
+    background: peachpuff;
+    border-radius: 5px;
+    border: 2px solid purple;
+    padding: 4px
+}
+
 svg {
     vertical-align: top;
 }
