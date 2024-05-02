@@ -86,6 +86,7 @@ The input is JSON, with a single object containing the following fields:
   * `riskLimit` : If present, the desired risk limit (a number)
   * `assertionRisks` : If present, and array of numbers of same length as the assertions indicating the risk for each assertion as a result of the audit. 
     This is obviously not available until after the audit, where it may be added to the metadata by other tools for convenience and reporting.
+    There is a more elegant way to do this now - see the `status` field for assertions below.
 * `num_candidates` : An integer specifying how many candidates there are in the contest
 * `votes` : An array of objects. Each object contains two fields:
   * `n` : The number of votes with this specific preference list
@@ -131,6 +132,7 @@ The output is JSON with two fields:
         * `continuing` : Only present if `type` is `NEN`. An array of candidate indices.
       * `difficulty` : a number indicating the difficulty of the assertion.
       * `margin` : an integer indicating the difference in the tallies associated with the winner and loser.
+      * `status` : This is a field that may be added by a user, never produced by raire-rs itself. It is an object containing fields that the visualizer can use. Currently, it uses the `risk` field as a number indicating how the audit is going. 
     * `difficulty` : a number indicating the difficulty of the audit. This is the maximum of the difficulties in the assertions array.
     * `margin` : an integer indicating the smallest margin of the audit. This is the minimum of the margins in the assertions array.
     * `winner` : The index of the candidate who won - an integer between `0` and `num_candidates-1`. 

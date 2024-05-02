@@ -665,13 +665,15 @@ function describe_raire_result(output_div,explanation_div,data) {
         if (data.solution.Ok.hasOwnProperty("difficulty")) heading_name+=" - difficulty = "+data.solution.Ok.difficulty;
         if (data.solution.Ok.hasOwnProperty("margin")) heading_name+=" margin = "+data.solution.Ok.margin;
         add(output_div,"h3","Assertions").innerText=heading_name;
-        let assertionRisks = data.metadata && data.metadata.assertionRisks; // a tool may add the risk limits from the audit to the metadata
+        let assertionRisks = data.metadata && data.metadata.assertionRisks; // a tool may add the risk limits from the audit to the metadata either here or in the status field for each assertion.
         let riskLimit = data.metadata && data.metadata.riskLimit;
         let assertionIndex = 0;
         for (const av of data.solution.Ok.assertions) {
             let adiv = add(output_div,"div");
-            if (Array.isArray(assertionRisks) && assertionRisks.length>assertionIndex) {
-                let risk = assertionRisks[assertionIndex];
+            let risk = (av.hasOwnProperty("status") && av.status.hasOwnProperty("risk"))?av.status.risk:(
+                (Array.isArray(assertionRisks) && assertionRisks.length>assertionIndex)?assertionRisks[assertionIndex]:null
+            );
+            if (typeof risk==="number") {
                 let isGood = typeof riskLimit==="number"?(risk<=riskLimit?"risk_ok":"risk_bad"):"risk"
                 let span = add(adiv,"span",isGood);
                 span.innerText=""+risk;
