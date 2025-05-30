@@ -16,9 +16,17 @@ div.computing {
     font-weight: bold;
 }
 
+
+span.ref_start {
+    display: inline-block;
+    width : 3em;
+    text-align: right;
+    padding-right: 1em;
+}
+
 span.difficulty_start {
     display: inline-block;
-    width : 10em;
+    width : 7em;
     text-align: right;
     padding-right: 1em;
 }
@@ -133,9 +141,9 @@ span.assertion_index {
     font-style: italic;
     color: black;
     background: peachpuff;
-    border-radius: 5px;
+    border-radius: 4px;
     border: 2px solid purple;
-    padding: 4px
+    padding: 0 2px 0 2px;
 }
 
 svg {

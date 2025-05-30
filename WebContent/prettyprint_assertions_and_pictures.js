@@ -668,8 +668,18 @@ function describe_raire_result(output_div,explanation_div,data) {
         let assertionRisks = data.metadata && data.metadata.assertionRisks; // a tool may add the risk limits from the audit to the metadata either here or in the status field for each assertion.
         let riskLimit = data.metadata && data.metadata.riskLimit;
         let assertionIndex = 0;
+        let a_heading_div = add(output_div,"div");
+        a_heading_div.style.fontWeight="bold";
         for (const av of data.solution.Ok.assertions) {
             let adiv = add(output_div,"div");
+            // do index
+            add(add(adiv,"span","ref_start"),"span","assertion_index").innerText=""+(assertionIndex+1);
+            if (assertionIndex===0) {
+                let ref_head = add(a_heading_div,"span","ref_start");
+                ref_head.innerText="Ref";
+                ref_head.title="The reference is a number that is used in the pictures below to refer to a specific assertion."
+            }
+            // do risk
             let risk = (av.hasOwnProperty("status") && av.status.hasOwnProperty("risk"))?av.status.risk:(
                 (Array.isArray(assertionRisks) && assertionRisks.length>assertionIndex)?assertionRisks[assertionIndex]:null
             );
@@ -678,11 +688,24 @@ function describe_raire_result(output_div,explanation_div,data) {
                 let span = add(adiv,"span",isGood);
                 span.innerText=""+risk;
                 if (typeof riskLimit==="number") span.title="Risk limit = "+riskLimit;
+                if (assertionIndex===0) {
+                    add(adiv,"a_heading_div","risk").innerText="Difficulty";
+                }
             }
-            if (av.hasOwnProperty("difficulty")) add(adiv,"span","difficulty_start").innerText=""+av.difficulty; // Michelle's format doesn't have it for individual assertions
-            if (av.hasOwnProperty("margin")) add(adiv,"span","margin_start").innerText=""+av.margin; // Michelle's format (and old raire-rs) doesn't have it for individual assertions
+            // do difficulty
+            if (av.hasOwnProperty("difficulty")) { // Michelle's format doesn't have it for individual assertions
+                add(adiv, "span", "difficulty_start").innerText = "" + av.difficulty;
+                if (assertionIndex===0) add(a_heading_div, "span", "difficulty_start").innerText = "Difficulty";
+            }
+            // do margin
+            if (av.hasOwnProperty("margin")) {  // Michelle's format (and old raire-rs) doesn't have it for individual assertions
+                add(adiv, "span", "margin_start").innerText = "" + av.margin;
+                if (assertionIndex===0) add(a_heading_div, "span", "margin_start").innerText = "Margin";
+            }
+            // do description
             const a = av.assertion;
             const adesc = add(adiv,"span");
+            if (assertionIndex===0) add(a_heading_div, "span").innerText = "Description";
             if (a["type"] === "NEN") {
                 adesc.innerText="NEN: "+candidate_name(a.winner)+" > "+candidate_name(a.loser)+" if only {"+candidate_name_list(a.continuing)+"} remain";
             } else if (a["type"] === "NEB") {
