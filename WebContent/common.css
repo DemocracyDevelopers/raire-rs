@@ -29,6 +29,8 @@ span.difficulty_start {
     width : 7em;
     text-align: right;
     padding-right: 1em;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 span.margin_start {

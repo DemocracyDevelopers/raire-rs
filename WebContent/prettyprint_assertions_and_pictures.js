@@ -689,7 +689,7 @@ function describe_raire_result(output_div,explanation_div,data) {
                 span.innerText=""+risk;
                 if (typeof riskLimit==="number") span.title="Risk limit = "+riskLimit;
                 if (assertionIndex===0) {
-                    add(adiv,"a_heading_div","risk").innerText="Difficulty";
+                    add(a_heading_div,"span","risk").innerText="Risk";
                 }
             }
             // do difficulty
