@@ -137,7 +137,7 @@ function make_examples() {
     for (const name of ["guide","NEB_assertions","one_candidate_dominates","two_leading_candidates","why_not_audit_every_step"]) {
         make_example(name.replace("_"," "),"example_assertions/a_guide_to_RAIRE_eg_"+name+".json","EgGuideToRaire");
     }
-    make_example("San Francisco IRV RLA pilot 2019","https://raw.githubusercontent.com/DemocracyDevelopers/SHANGRLA/main/shangrla/Examples/Data/SF2019Nov8Assertions.json","MichelleExamples");
+    make_example("San Francisco IRV RLA pilot 2019","https://raw.githubusercontent.com/DemocracyDevelopers/SHANGRLA/refs/heads/main/shangrla/Examples/Data/SFDA2019/SF2019Nov8Assertions.json","MichelleExamples");
     make_example("San Francisco IRV RLA pilot 2019","SHANGRLA_SF2019_log_with_write_in.json","SHANGRLAExamples"); // candiaate 45 added to "https://github.com/DemocracyDevelopers/SHANGRLA/blob/main/shangrla/Examples/log.json"
 }
 
